@@ -1,6 +1,13 @@
 ﻿//================================================================================================
 // TutorialApp.h
 //================================================================================================
+
+//5개의 CPP가 구현을 나눠서 함
+//TutorialApp_Lifecycle.cpp    // OnInitialize/OnUninitialize/OnUpdate/OnRender/WndProc
+//TutorialApp_D3DInit.cpp      // InitD3D / UninitD3D
+//TutorialApp_SceneInit.cpp    // InitScene / UninitScene + 섀도우 리소스/상태 생성
+//TutorialApp_RenderPass.cpp   // 렌더링 패스 세분화 (섀도우/스카이/불투명/투명/디버그)
+//TutorialApp_ImGui.cpp        // InitImGUI / UninitImGUI / UpdateImGUI / AnimUI
 #pragma once
 
 #include <windows.h>
@@ -93,20 +100,66 @@ private:
 	bool CreateShadowResources(ID3D11Device* dev);
 	bool CreateDepthOnlyShaders(ID3D11Device* dev);
 
-	void BuildLightCameraAndUpload(
+	//============================================================================================
+	// 랜더 패스
+	//============================================================================================
+	void RenderShadowPass_Main(
 		ID3D11DeviceContext* ctx,
-		const DirectX::SimpleMath::Vector3& camPos,
-		const DirectX::SimpleMath::Vector3& camForward,
-		const DirectX::SimpleMath::Vector3& lightDir_unit,
-		float focusDist, float lightDist);
+		ConstantBuffer& baseCB);
 
-	void RenderShadowPass(
+	void RenderSkyPass(
 		ID3D11DeviceContext* ctx,
-		const DirectX::SimpleMath::Vector3& camPos,
-		const DirectX::SimpleMath::Vector3& camForward,
-		const DirectX::SimpleMath::Vector3& lightDir_unit,
-		float focusDist, float lightDist);
+		const Matrix& viewNoTrans);
 
+	void RenderOpaquePass(
+		ID3D11DeviceContext* ctx,
+		ConstantBuffer& baseCB,
+		const DirectX::SimpleMath::Vector3& eye);
+
+	void RenderCutoutPass(
+		ID3D11DeviceContext* ctx,
+		ConstantBuffer& baseCB,
+		const DirectX::SimpleMath::Vector3& eye);
+
+	void RenderTransparentPass(
+		ID3D11DeviceContext* ctx,
+		ConstantBuffer& baseCB,
+		const DirectX::SimpleMath::Vector3& eye);
+
+	void RenderDebugPass(
+		ID3D11DeviceContext* ctx,
+		ConstantBuffer& baseCB,		
+		const DirectX::SimpleMath::Vector3& lightDir);
+
+
+	//============================================================================================
+	// ─────────────────────────────────────
+	// Render helpers (static/skinned pipeline + static draw)
+	// ─────────────────────────────────────
+	void BindStaticMeshPipeline(ID3D11DeviceContext* ctx);
+	void BindSkinnedMeshPipeline(ID3D11DeviceContext* ctx);
+
+	void DrawStaticOpaqueOnly(
+		ID3D11DeviceContext* ctx,
+		StaticMesh& mesh,
+		const std::vector<MaterialGPU>& mtls,
+		const Matrix& world,
+		const ConstantBuffer& cb);
+
+	void DrawStaticAlphaCutOnly(
+		ID3D11DeviceContext* ctx,
+		StaticMesh& mesh,
+		const std::vector<MaterialGPU>& mtls,
+		const Matrix& world,
+		const ConstantBuffer& cb);
+
+	void DrawStaticTransparentOnly(
+		ID3D11DeviceContext* ctx,
+		StaticMesh& mesh,
+		const std::vector<MaterialGPU>& mtls,
+		const Matrix& world,
+		const ConstantBuffer& cb);
+	
 	//============================================================================================
 	// D3D 핵심 객체
 	//============================================================================================
@@ -316,6 +369,9 @@ private:
 	//============================================================================================
 	// 씬/조명/카메라 파라미터
 	//============================================================================================
+
+	Matrix view;
+
 	float  color[4] = { 0.10f, 0.11f, 0.13f, 1.0f };
 	float  spinSpeed = 0.0f;
 

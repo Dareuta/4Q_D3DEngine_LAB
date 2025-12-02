@@ -455,7 +455,8 @@ void TutorialApp::UpdateLightCameraAndShadowCB(ID3D11DeviceContext* ctx)
 	// 6) b6 업로드
 	struct ShadowCB_ { Matrix LVP; Vector4 Params; } scb;
 	scb.LVP = XMMatrixTranspose(V * P);
-	scb.Params = Vector4(/*compareBias*/ 0.0f, 1.0f / mShadowW, 1.0f / mShadowH, 0.0f); // 비교바이어스 0으로 운용
+	//scb.Params = Vector4(/*compareBias*/ 0.0f, 1.0f / mShadowW, 1.0f / mShadowH, 0.0f); // 비교바이어스 0으로 운용
+	scb.Params = Vector4(mShadowCmpBias, 1.0f / mShadowW, 1.0f / mShadowH, 0.0f);
 	ctx->UpdateSubresource(mCB_Shadow.Get(), 0, nullptr, &scb, 0, 0);
 
 	ID3D11Buffer* b6 = mCB_Shadow.Get();
@@ -503,113 +504,6 @@ bool TutorialApp::CreateDepthOnlyShaders(ID3D11Device* dev)
 
 	return true;
 }
-
-void TutorialApp::BuildLightCameraAndUpload(ID3D11DeviceContext* ctx,
-	const DirectX::SimpleMath::Vector3& camPos,
-	const DirectX::SimpleMath::Vector3& camForward,
-	const DirectX::SimpleMath::Vector3& lightDir_unit,
-	float focusDist, float lightDist)
-{
-	// === 라이트 카메라 구성 ===
-	using namespace DirectX;
-	const Vector3 eyePos = m_Camera.m_World.Translation();
-	const Vector3 camFwd = m_Camera.GetForward();
-
-	// 1) lookAt 결정
-	Vector3 lookAt;
-	if (mShUI.followCamera) {
-		lookAt = eyePos + camFwd * mShUI.focusDist;
-	}
-	else {
-		lookAt = XMLoadFloat3(&mShUI.manualTarget);
-	}
-
-	// 2) 라이트 방향 (기존 yaw/pitch → vLightDir)
-	Vector3 Ldir(vLightDir.x, vLightDir.y, vLightDir.z);
-	Ldir.Normalize();
-
-	// 3) lightPos 결정 (directional을 '계산용 위치'로)
-	Vector3 lightPos;
-	if (mShUI.useManualPos) {
-		lightPos = XMLoadFloat3(&mShUI.manualPos);
-	}
-	else {
-		lightPos = lookAt - Ldir * mShUI.lightDist;
-	}
-
-	// 4) View 행렬
-	const Matrix lightView = Matrix::CreateLookAt(lightPos, lookAt, Vector3::UnitY);
-
-	// 5) Proj 행렬
-	float aspectSh = float(mShadowW) / float(mShadowH);
-
-	// “카메라 화면의 focusDist 평면 직사각형”을 라이트 프러스텀이 덮게(자동 커버)
-	if (mShUI.autoCover) {
-		// 카메라 파라미터에서 반높이/반너비
-		const float camFovY = XMConvertToRadians(m_FovDegree);
-		const float halfH = tanf(camFovY * 0.5f) * mShUI.focusDist;
-		const float halfW = halfH * (m_ClientWidth / float(m_ClientHeight));
-		const float r = sqrtf(halfW * halfW + halfH * halfH) * mShUI.coverMargin;
-
-		// lightDist 기준으로 FOV / 클립 자동 산출
-		const float d = mShUI.lightDist;
-		const float nz = max(d - r, 0.01f);
-		const float fz = d + r;
-		mShadowNear = nz;
-		mShadowFar = fz;
-		mShadowFovY = 2.0f * atanf(r / d); // 라이트 FOVY 자동화
-	}
-
-	// 최종 투영
-	const Matrix lightProj = Matrix::CreatePerspectiveFieldOfView(mShadowFovY, aspectSh, mShadowNear, mShadowFar);
-	const Matrix lightVP = lightView * lightProj;
-
-	// (디버그용 보관)
-	mLightView = lightView;
-	mLightProj = lightProj;
-
-	// 4) CB(b6) 업로드 (Shared.hlsli: LightViewProj, ShadowParams)
-	struct ShadowCB_ {
-		DirectX::XMFLOAT4X4 LVP;
-		DirectX::XMFLOAT4   Params; // x=bias(미사용), y=1/w, z=1/h, w=0
-	} scb{};
-
-	auto LVP = (mLightView * mLightProj).Transpose();
-	XMStoreFloat4x4(&scb.LVP, LVP);
-	scb.Params = { 0.0f, 1.0f / mShadowW, 1.0f / mShadowH, 0.0f };
-
-	ctx->UpdateSubresource(mCB_Shadow.Get(), 0, nullptr, &scb, 0, 0);
-	ID3D11Buffer* b6 = mCB_Shadow.Get();
-	ctx->VSSetConstantBuffers(6, 1, &b6); // b6: ShadowCB
-	ctx->PSSetConstantBuffers(6, 1, &b6);
-}
-
-void TutorialApp::RenderShadowPass(ID3D11DeviceContext* ctx,
-	const DirectX::SimpleMath::Vector3& camPos,
-	const DirectX::SimpleMath::Vector3& camForward,
-	const DirectX::SimpleMath::Vector3& lightDir_unit,
-	float focusDist, float lightDist)
-{
-	// 0) LightViewProj 계산 + CB(b6) 업로드
-	BuildLightCameraAndUpload(ctx, camPos, camForward, lightDir_unit, focusDist, lightDist);
-
-	// 1) 타깃 설정 (컬러 RTV 없음, DSV만)
-	ctx->OMSetRenderTargets(0, nullptr, mShadowDSV.Get());
-	ctx->ClearDepthStencilView(mShadowDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
-	ctx->RSSetViewports(1, &mShadowVP);
-	ctx->RSSetState(mRS_ShadowBias.Get());
-
-	// 2) 공용 상태
-	float blend[4] = { 0,0,0,0 };
-	ctx->OMSetBlendState(nullptr, blend, 0xFFFFFFFF);
-	ID3D11SamplerState* cmp = mSamShadowCmp.Get();
-	ctx->PSSetSamplers(1, 1, &cmp); // s1
-
-	ID3D11SamplerState* lin = m_pSamplerLinear;
-	ctx->PSSetSamplers(0, 1, &lin); // s0 (samLinear) - opacity 샘플링용	
-}
-
-
 
 void TutorialApp::UninitScene()
 {
