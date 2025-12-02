@@ -5,18 +5,55 @@
 
 #include <windows.h>
 #include "../D3D_Core/GameApp.h"
+#include "../D3D_Core/Helper.h"
 #include <d3d11.h>
 
 #include "StaticMesh.h"
 #include "Material.h"
 #include "RigidSkeletal.h"
 #include "SkinnedSkeletal.h"
+#include "AssimpImporterEx.h"
 
 #include <directxtk/SimpleMath.h>
+#include <d3dcompiler.h>
+#include <Directxtk/DDSTextureLoader.h>  // CreateDDSTextureFromFile
+#include <DirectXTK/WICTextureLoader.h>
 
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
+
+#pragma comment (lib, "d3d11.lib")
+#pragma comment(lib,"d3dcompiler.lib")
+
+
+struct ConstantBuffer // 상수버퍼
+{
+	Matrix mWorld;
+	Matrix mView;
+	Matrix mProjection;
+	Matrix mWorldInvTranspose;
+
+	Vector4 vLightDir;
+	Vector4 vLightColor;
+};
+
+struct BlinnPhongCB
+{
+	Vector4 EyePosW;   // (ex,ey,ez,1)
+	Vector4 kA;        // (ka.r,ka.g,ka.b,0)
+	Vector4 kSAlpha;   // (ks, alpha, 0, 0)
+	Vector4 I_ambient; // (Ia.r,Ia.g,Ia.b,0)
+};
+
+struct UseCB
+{
+	UINT  useDiffuse, useNormal, useSpecular, useEmissive;
+	UINT  useOpacity;
+	float alphaCut;
+	float pad[2];
+};
+
 
 class TutorialApp : public GameApp
 {

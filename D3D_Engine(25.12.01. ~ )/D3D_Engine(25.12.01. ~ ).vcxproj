@@ -152,7 +152,11 @@ endlocal
     <ClCompile Include="SkinnedMesh.cpp" />
     <ClCompile Include="SkinnedSkeletal.cpp" />
     <ClCompile Include="StaticMesh.cpp" />
-    <ClCompile Include="TutorialApp.cpp" />
+    <ClCompile Include="TutorialApp_D3DInit.cpp" />
+    <ClCompile Include="TutorialApp_ImGui.cpp" />
+    <ClCompile Include="TutorialApp_Lifecycle.cpp" />
+    <ClCompile Include="TutorialApp_RenderPass.cpp" />
+    <ClCompile Include="TutorialApp_SceneInit.cpp" />
     <ClCompile Include="WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
