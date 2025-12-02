@@ -24,6 +24,8 @@ ResourceManager& ResourceManager::Instance()
 
 void ResourceManager::Initialize(ID3D11Device* device)
 {
+	if (m_device && m_device != device)
+		throw std::runtime_error("ResourceManager::Initialize called twice with different devices.");
 	m_device = device;
 }
 

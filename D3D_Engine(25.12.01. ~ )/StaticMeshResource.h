@@ -20,10 +20,6 @@ public:
 
 	}
 
-	StaticMeshResource(ID3D11Device* dev,
-		const std::wstring& fbxPath,
-		const std::wstring& texDir);
-
 	// 복사는 막고, 이동만 허용 (MaterialGPU가 원래 복사 금지라 자연스럽게 맞음)
 	StaticMeshResource(const StaticMeshResource&) = delete;
 	StaticMeshResource& operator=(const StaticMeshResource&) = delete;
