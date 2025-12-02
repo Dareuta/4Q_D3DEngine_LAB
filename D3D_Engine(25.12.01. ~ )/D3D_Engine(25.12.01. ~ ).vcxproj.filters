@@ -1,81 +1,83 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="소스 파일">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="헤더 파일">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
     <Filter Include="리소스 파일">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="WorkSpace">
+      <UniqueIdentifier>{d4ade98c-77eb-4a7a-9661-c2f150398a6f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="WorkSpace\#App">
+      <UniqueIdentifier>{53e14a9b-c07e-4ab9-9684-b5b5a51df8f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="WorkSpace\#etc.">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AssimpImporterEX.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClCompile>
     <ClCompile Include="Material.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClCompile>
     <ClCompile Include="RigidSkeletal.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClCompile>
     <ClCompile Include="SkinnedMesh.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClCompile>
     <ClCompile Include="SkinnedSkeletal.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClCompile>
     <ClCompile Include="StaticMesh.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="WinMain.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="TutorialApp_ImGui.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="TutorialApp_RenderPass.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClCompile>
     <ClCompile Include="TutorialApp_SceneInit.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>WorkSpace\#App</Filter>
     </ClCompile>
     <ClCompile Include="TutorialApp_D3DInit.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>WorkSpace\#App</Filter>
+    </ClCompile>
+    <ClCompile Include="TutorialApp_ImGui.cpp">
+      <Filter>WorkSpace\#App</Filter>
     </ClCompile>
     <ClCompile Include="TutorialApp_Lifecycle.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>WorkSpace\#App</Filter>
+    </ClCompile>
+    <ClCompile Include="TutorialApp_RenderPass.cpp">
+      <Filter>WorkSpace\#App</Filter>
+    </ClCompile>
+    <ClCompile Include="WinMain.cpp">
+      <Filter>WorkSpace\#App</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TutorialApp.h">
+      <Filter>WorkSpace\#App</Filter>
+    </ClInclude>
     <ClInclude Include="AssimpImporterEX.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClInclude>
     <ClInclude Include="Material.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClInclude>
     <ClInclude Include="MeshDataEx.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClInclude>
     <ClInclude Include="RigidSkeletal.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClInclude>
     <ClInclude Include="SkinnedMesh.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClInclude>
     <ClInclude Include="SkinnedSkeletal.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClInclude>
     <ClInclude Include="StaticMesh.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="TutorialApp.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>WorkSpace\#etc.</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

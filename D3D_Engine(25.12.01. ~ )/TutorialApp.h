@@ -1,19 +1,29 @@
 ﻿//================================================================================================
 // TutorialApp.h
+// - TutorialApp을 구성하는 5개의 CPP로 역할을 분리
+//
+//   TutorialApp_Lifecycle.cpp    // OnInitialize / OnUninitialize / OnUpdate / OnRender / WndProc
+//   TutorialApp_D3DInit.cpp      // InitD3D / UninitD3D
+//   TutorialApp_SceneInit.cpp    // InitScene / UninitScene + 섀도우 리소스/상태 생성
+//   TutorialApp_RenderPass.cpp   // 렌더링 패스 세분화 (섀도우 / 스카이 / 불투명 / 투명 / 디버그)
+//   TutorialApp_ImGui.cpp        // InitImGUI / UninitImGUI / UpdateImGUI / AnimUI
 //================================================================================================
-
-//5개의 CPP가 구현을 나눠서 함
-//TutorialApp_Lifecycle.cpp    // OnInitialize/OnUninitialize/OnUpdate/OnRender/WndProc
-//TutorialApp_D3DInit.cpp      // InitD3D / UninitD3D
-//TutorialApp_SceneInit.cpp    // InitScene / UninitScene + 섀도우 리소스/상태 생성
-//TutorialApp_RenderPass.cpp   // 렌더링 패스 세분화 (섀도우/스카이/불투명/투명/디버그)
-//TutorialApp_ImGui.cpp        // InitImGUI / UninitImGUI / UpdateImGUI / AnimUI
 #pragma once
 
 #include <windows.h>
+#include <d3d11.h>
+#include <d3dcompiler.h>
+
+#include <directxtk/SimpleMath.h>
+#include <DirectXTK/DDSTextureLoader.h>   // CreateDDSTextureFromFile
+#include <DirectXTK/WICTextureLoader.h>
+
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_dx11.h>
+
 #include "../D3D_Core/GameApp.h"
 #include "../D3D_Core/Helper.h"
-#include <d3d11.h>
 
 #include "StaticMesh.h"
 #include "Material.h"
@@ -21,20 +31,13 @@
 #include "SkinnedSkeletal.h"
 #include "AssimpImporterEx.h"
 
-#include <directxtk/SimpleMath.h>
-#include <d3dcompiler.h>
-#include <Directxtk/DDSTextureLoader.h>  // CreateDDSTextureFromFile
-#include <DirectXTK/WICTextureLoader.h>
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 
-#include <imgui.h>
-#include <imgui_impl_win32.h>
-#include <imgui_impl_dx11.h>
-
-#pragma comment (lib, "d3d11.lib")
-#pragma comment(lib,"d3dcompiler.lib")
-
-
-struct ConstantBuffer // 상수버퍼
+//==============================================================================================
+// 상수 버퍼 구조체 (CPU → GPU 전달용, HLSL ConstantBuffer와 1:1 매칭)
+//==============================================================================================
+struct ConstantBuffer
 {
 	Matrix mWorld;
 	Matrix mView;
@@ -47,21 +50,28 @@ struct ConstantBuffer // 상수버퍼
 
 struct BlinnPhongCB
 {
-	Vector4 EyePosW;   // (ex,ey,ez,1)
-	Vector4 kA;        // (ka.r,ka.g,ka.b,0)
-	Vector4 kSAlpha;   // (ks, alpha, 0, 0)
-	Vector4 I_ambient; // (Ia.r,Ia.g,Ia.b,0)
+	Vector4 EyePosW;    // (ex, ey, ez, 1)
+	Vector4 kA;         // (ka.r, ka.g, ka.b, 0)
+	Vector4 kSAlpha;    // (ks, alpha, 0, 0)
+	Vector4 I_ambient;  // (Ia.r, Ia.g, Ia.b, 0)
 };
 
 struct UseCB
 {
-	UINT  useDiffuse, useNormal, useSpecular, useEmissive;
+	UINT  useDiffuse;
+	UINT  useNormal;
+	UINT  useSpecular;
+	UINT  useEmissive;
+
 	UINT  useOpacity;
 	float alphaCut;
 	float pad[2];
 };
 
 
+//================================================================================================
+// TutorialApp
+//================================================================================================
 class TutorialApp : public GameApp
 {
 public:
@@ -75,19 +85,22 @@ public:
 	const Matrix& GetProjection() const noexcept { return m_Projection; }
 
 protected:
-	// ===== GameApp hooks =====
-	bool OnInitialize() override;
-	void OnUninitialize() override;
-	void OnUpdate() override;
-	void OnRender() override;
+	//==========================================================================================
+	// GameApp hooks
+	//==========================================================================================
+	bool    OnInitialize() override;
+	void    OnUninitialize() override;
+	void    OnUpdate() override;
+	void    OnRender() override;
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) override;
 
 private:
-	//============================================================================================
-	// 초기화/해제 유틸
-	//============================================================================================
+	//==========================================================================================
+	// 초기화 / 해제 유틸리티
+	//==========================================================================================
 	bool InitD3D();
 	void UninitD3D();
+
 	bool InitImGUI();
 	void UninitImGUI();
 	void UpdateImGUI();
@@ -100,9 +113,9 @@ private:
 	bool CreateShadowResources(ID3D11Device* dev);
 	bool CreateDepthOnlyShaders(ID3D11Device* dev);
 
-	//============================================================================================
-	// 랜더 패스
-	//============================================================================================
+	//==========================================================================================
+	// 렌더 패스
+	//==========================================================================================
 	void RenderShadowPass_Main(
 		ID3D11DeviceContext* ctx,
 		ConstantBuffer& baseCB);
@@ -128,14 +141,12 @@ private:
 
 	void RenderDebugPass(
 		ID3D11DeviceContext* ctx,
-		ConstantBuffer& baseCB,		
+		ConstantBuffer& baseCB,
 		const DirectX::SimpleMath::Vector3& lightDir);
 
-
-	//============================================================================================
-	// ─────────────────────────────────────
-	// Render helpers (static/skinned pipeline + static draw)
-	// ─────────────────────────────────────
+	//==========================================================================================
+	// Render helpers (정적/스키닝 파이프라인 + 정적 드로우)
+	//==========================================================================================
 	void BindStaticMeshPipeline(ID3D11DeviceContext* ctx);
 	void BindSkinnedMeshPipeline(ID3D11DeviceContext* ctx);
 
@@ -159,44 +170,45 @@ private:
 		const std::vector<MaterialGPU>& mtls,
 		const Matrix& world,
 		const ConstantBuffer& cb);
-	
-	//============================================================================================
+
+	//==========================================================================================
 	// D3D 핵심 객체
-	//============================================================================================
+	//==========================================================================================
 	ID3D11Device* m_pDevice = nullptr;
 	ID3D11DeviceContext* m_pDeviceContext = nullptr;
 	IDXGISwapChain* m_pSwapChain = nullptr;
 	ID3D11RenderTargetView* m_pRenderTargetView = nullptr;
 
-	// Depth/Stencil
+	// Depth / Stencil
 	ID3D11Texture2D* m_pDepthStencil = nullptr;
 	ID3D11DepthStencilView* m_pDepthStencilView = nullptr;
 	ID3D11DepthStencilState* m_pDepthStencilState = nullptr;
 
-	// 공용 리소스
+	// 공용 리소스 (샘플러, 상수버퍼, 투영 행렬)
 	ID3D11SamplerState* m_pSamplerLinear = nullptr;
 	ID3D11Buffer* m_pConstantBuffer = nullptr; // b0
 	ID3D11Buffer* m_pBlinnCB = nullptr; // b1
-	Matrix                   m_Projection = Matrix::Identity;
-	DirectX::XMMATRIX        m_World = DirectX::XMMatrixIdentity();
 
-	//============================================================================================
-	// 렌더 상태
-	//============================================================================================
+	Matrix              m_Projection = Matrix::Identity;
+	DirectX::XMMATRIX   m_World = DirectX::XMMatrixIdentity();
+
+	//==========================================================================================
+	// 렌더 상태 (Rasterizer / DepthStencil / Blend)
+	//==========================================================================================
 	// 일반
 	ID3D11RasterizerState* m_pCullBackRS = nullptr; // 기본 Back
 	ID3D11DepthStencilState* m_pDSS_Opaque = nullptr; // Depth write ON
 	ID3D11DepthStencilState* m_pDSS_Trans = nullptr; // Depth write OFF
 	ID3D11BlendState* m_pBS_Alpha = nullptr; // Straight Alpha
 
-	// 디버그/테스트
+	// 디버그 / 테스트
 	ID3D11RasterizerState* m_pNoCullRS = nullptr; // (미사용 가능)
 	ID3D11RasterizerState* m_pWireRS = nullptr; // Wireframe + Cull None
 	ID3D11DepthStencilState* m_pDSS_Disabled = nullptr; // DepthEnable = FALSE
 
-	//============================================================================================
+	//==========================================================================================
 	// 스카이박스
-	//============================================================================================
+	//==========================================================================================
 	ID3D11VertexShader* m_pSkyVS = nullptr;
 	ID3D11PixelShader* m_pSkyPS = nullptr;
 	ID3D11InputLayout* m_pSkyIL = nullptr;
@@ -207,127 +219,140 @@ private:
 	ID3D11DepthStencilState* m_pSkyDSS = nullptr; // Depth write ZERO + LEQUAL
 	ID3D11RasterizerState* m_pSkyRS = nullptr; // Cull FRONT (내부면 렌더)
 
-	//============================================================================================
-	// 메쉬 파이프라인(정적)
-	//============================================================================================
+	//==========================================================================================
+	// 메쉬 파이프라인 (정적)
+	//==========================================================================================
 	ID3D11VertexShader* m_pMeshVS = nullptr;
 	ID3D11PixelShader* m_pMeshPS = nullptr;
 	ID3D11InputLayout* m_pMeshIL = nullptr;
 	ID3D11Buffer* m_pUseCB = nullptr; // b2
 
-	// FBX/머티리얼(정적)
-	StaticMesh               gTree, gChar, gZelda;
-	std::vector<MaterialGPU> gTreeMtls, gCharMtls, gZeldaMtls;
+	// FBX / 머티리얼 (정적)
+	StaticMesh               gTree;
+	StaticMesh               gChar;
+	StaticMesh               gZelda;
+	std::vector<MaterialGPU> gTreeMtls;
+	std::vector<MaterialGPU> gCharMtls;
+	std::vector<MaterialGPU> gZeldaMtls;
 
-	// 박스 휴먼(정적 메쉬 + 리지드 스켈)
+	// 박스 휴먼 (정적 메쉬 + 리지드 스켈레톤)
 	StaticMesh               gBoxHuman;
 	std::vector<MaterialGPU> gBoxMtls;
 
-	//============================================================================================
+	//==========================================================================================
 	// 스키닝 파이프라인
-	//============================================================================================
+	//==========================================================================================
 	ID3D11VertexShader* m_pSkinnedVS = nullptr;
 	ID3D11InputLayout* m_pSkinnedIL = nullptr;
 	ID3D11Buffer* m_pBoneCB = nullptr; // VS b4
-	std::unique_ptr<SkinnedSkeletal> mSkinRig;                // SkinningTest.fbx
+	std::unique_ptr<SkinnedSkeletal>     mSkinRig;               // SkinningTest.fbx
 
-	//============================================================================================
+	//==========================================================================================
 	// 섀도우 리소스
-	//============================================================================================
+	//==========================================================================================
 	Microsoft::WRL::ComPtr<ID3D11Texture2D>          mShadowTex;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView>   mShadowDSV;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mShadowSRV;
 	Microsoft::WRL::ComPtr<ID3D11SamplerState>       mSamShadowCmp;   // s1 (Comparison)
 
-	Microsoft::WRL::ComPtr<ID3D11RasterizerState>    mRS_ShadowBias;  // 깊이바이어스 RS
+	Microsoft::WRL::ComPtr<ID3D11RasterizerState>    mRS_ShadowBias;  // 그림자 패스용 깊이 바이어스 RS
 	D3D11_VIEWPORT                                   mShadowVP{};
 
 	// Depth-only shaders & IL
-	Microsoft::WRL::ComPtr<ID3D11VertexShader>       mVS_Depth;         // Static
-	Microsoft::WRL::ComPtr<ID3D11VertexShader>       mVS_DepthSkinned;  // Skinned
-	Microsoft::WRL::ComPtr<ID3D11PixelShader>        mPS_Depth;         // Alpha-cut clip()
-	Microsoft::WRL::ComPtr<ID3D11InputLayout>        mIL_PNTT;          // 정적
-	Microsoft::WRL::ComPtr<ID3D11InputLayout>        mIL_PNTT_BW;       // 스키닝
+	Microsoft::WRL::ComPtr<ID3D11VertexShader>       mVS_Depth;        // Static
+	Microsoft::WRL::ComPtr<ID3D11VertexShader>       mVS_DepthSkinned; // Skinned
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>        mPS_Depth;        // Alpha-cut clip()
+	Microsoft::WRL::ComPtr<ID3D11InputLayout>        mIL_PNTT;         // 정적 (PNTT)
+	Microsoft::WRL::ComPtr<ID3D11InputLayout>        mIL_PNTT_BW;      // 스키닝 (PNTT + Bone)
 
 	// Shadow CB (b6) 및 라이트 카메라 행렬
-	Microsoft::WRL::ComPtr<ID3D11Buffer>             mCB_Shadow;        // LVP, Params
-	Matrix mLightView = Matrix::Identity;
-	Matrix mLightProj = Matrix::Identity;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>             mCB_Shadow;       // LVP, Params
+	Matrix                                           mLightView = Matrix::Identity;
+	Matrix                                           mLightProj = Matrix::Identity;
 
 	// 섀도우 설정값
-	UINT  mShadowW = 2048, mShadowH = 2048;
-	float mShadowCmpBias = 0.0015f;                         // 비교 바이어스(PS)
+	UINT  mShadowW = 2048;
+	UINT  mShadowH = 2048;
+	float mShadowCmpBias = 0.0015f; // 비교 바이어스(PS)
 	float mShadowFovY = DirectX::XMConvertToRadians(60.0f);
-	float mShadowNear = 0.01f, mShadowFar = 1000.0f;
-	int  mShadowDepthBias = 1000;							 // RS DepthBias
-	float mShadowSlopeBias = 1.5f;                            // RS SlopeScaledDepthBias
-	float mShadowAlphaCut = 0.4f;                            // DepthOnly clip 임계
+	float mShadowNear = 0.01f;
+	float mShadowFar = 1000.0f;
+	int   mShadowDepthBias = 1000;    // RS DepthBias
+	float mShadowSlopeBias = 1.5f;    // RS SlopeScaledDepthBias
+	float mShadowAlphaCut = 0.4f;    // DepthOnly clip 임계
 
-	struct ShadowUI {
-		bool  showSRV = true;   // ImGui 프리뷰
-		bool  followCamera = true;   // 카메라 정면을 focus
-		bool  useManualPos = false;  // 라이트 위치 수동
-		bool  autoCover = true;   // 카메라 화면 자동 커버
-		bool  useOrtho = false;
+	struct ShadowUI
+	{
+		bool  showSRV = true;  // ImGui 프리뷰
+		bool  followCamera = true;  // 카메라 정면을 focus
+		bool  useManualPos = false; // 라이트 위치 수동
+		bool  autoCover = true;  // 카메라 화면 자동 커버
+		bool  useOrtho = false; // 직교 투영 여부
 
-		float focusDist = 500.0f;     // 카메라 정면 기준
-		float lightDist = 5000.0f;    // lookAt~light
-		float coverMargin = 1.3f;       // 여유 치수(>1)
+		float focusDist = 500.0f;    // 카메라 정면 기준
+		float lightDist = 5000.0f;   // lookAt ~ light
+		float coverMargin = 1.3f;      // 여유 치수 (> 1)
 
 		DirectX::XMFLOAT3 manualPos = { 0, 30, -30 };
 		DirectX::XMFLOAT3 manualTarget = { 0,  0,   0 };
 	} mShUI;
-	
-	//============================================================================================
-	// 애니메이션 컨트롤(디버그)
-	//============================================================================================
-	struct AnimCtrl {
+
+	//==========================================================================================
+	// 애니메이션 컨트롤 (디버그)
+	//==========================================================================================
+	struct AnimCtrl
+	{
 		bool   play = true;
 		bool   loop = true;
 		float  speed = 1.0f;
 		double t = 0.0;
 	};
+
 	AnimCtrl mBoxAC;
 	AnimCtrl mSkinAC;
 
-	//============================================================================================
+	//==========================================================================================
 	// 디버그 화살표
-	//============================================================================================
+	//==========================================================================================
 	ID3D11VertexShader* m_pDbgVS = nullptr;
 	ID3D11PixelShader* m_pDbgPS = nullptr;
 	ID3D11InputLayout* m_pDbgIL = nullptr;
 	ID3D11Buffer* m_pArrowVB = nullptr;
 	ID3D11Buffer* m_pArrowIB = nullptr;
 	ID3D11RasterizerState* m_pDbgRS = nullptr; // Cull None
-	ID3D11Buffer* m_pDbgCB = nullptr; // PS b3 (색상)
+	ID3D11Buffer* m_pDbgCB = nullptr;    // PS b3 (색상)
 
-	//============================================================================================
+	//==========================================================================================
 	// 디버그 그리드
-	//============================================================================================
-	Microsoft::WRL::ComPtr<ID3D11Buffer>       mGridVB, mGridIB;
+	//==========================================================================================
+	Microsoft::WRL::ComPtr<ID3D11Buffer>       mGridVB;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>       mGridIB;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>  mGridIL;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> mGridVS;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>  mGridPS;
-	UINT   mGridIndexCount = 0;
-	float  mGridHalfSize = 1000.0f;  // +- 범위
-	float  mGridY = -200.0f; // y 높이
 
-	//============================================================================================
+	UINT  mGridIndexCount = 0;
+	float mGridHalfSize = 1000.0f; // +- 범위
+	float mGridY = -200.0f; // y 높이
+
+	//==========================================================================================
 	// 변환 유틸 / 디버그 토글
-	//============================================================================================
-	struct XformUI {
-		DirectX::SimpleMath::Vector3 pos{ 0,0,0 };
-		DirectX::SimpleMath::Vector3 rotD{ 0,0,0 };   // degrees
-		DirectX::SimpleMath::Vector3 scl{ 1,1,1 };
+	//==========================================================================================
+	struct XformUI
+	{
+		DirectX::SimpleMath::Vector3 pos{ 0, 0, 0 };
+		DirectX::SimpleMath::Vector3 rotD{ 0, 0, 0 }; // degrees
+		DirectX::SimpleMath::Vector3 scl{ 1, 1, 1 };
 
-		DirectX::SimpleMath::Vector3 initPos{ 0,0,0 };
-		DirectX::SimpleMath::Vector3 initRotD{ 0,0,0 };
-		DirectX::SimpleMath::Vector3 initScl{ 1,1,1 };
+		DirectX::SimpleMath::Vector3 initPos{ 0, 0, 0 };
+		DirectX::SimpleMath::Vector3 initRotD{ 0, 0, 0 };
+		DirectX::SimpleMath::Vector3 initScl{ 1, 1, 1 };
 
 		bool enabled = true;
 	};
 
-	struct DebugToggles {
+	struct DebugToggles
+	{
 		bool showSky = true;
 		bool showOpaque = true;
 		bool showTransparent = true;
@@ -342,21 +367,23 @@ private:
 		bool disableSpecular = false;
 		bool disableEmissive = false;
 
-		bool forceAlphaClip = true; // 테스트 강제
-		bool showGrid = true;
+		bool  forceAlphaClip = true; // 테스트 강제
+		bool  showGrid = true;
 
 		float alphaCut = 0.4f;
 
-		bool useToon = true;
-		bool toonHalfLambert = true;
+		bool  useToon = true;
+		bool  toonHalfLambert = true;
 		float toonSpecStep = 0.55f;
 		float toonSpecBoost = 1.0f;
 		float toonShadowMin = 0.02f;
 	};
 
-	static Matrix ComposeSRT(const XformUI& xf) {
+	static Matrix ComposeSRT(const XformUI& xf)
+	{
 		using namespace DirectX;
 		using namespace DirectX::SimpleMath;
+
 		const Matrix S = Matrix::CreateScale(xf.scl);
 		const Matrix R = Matrix::CreateFromYawPitchRoll(
 			XMConvertToRadians(xf.rotD.y),
@@ -366,67 +393,73 @@ private:
 		return S * R * T;
 	}
 
-	//============================================================================================
-	// 씬/조명/카메라 파라미터
-	//============================================================================================
+	//==========================================================================================
+	// 씬 / 조명 / 카메라 파라미터
+	//==========================================================================================
+	Matrix view; // 카메라 View (렌더 프레임용 캐시)
 
-	Matrix view;
+	float color[4] = { 0.10f, 0.11f, 0.13f, 1.0f };
+	float spinSpeed = 0.0f;
 
-	float  color[4] = { 0.10f, 0.11f, 0.13f, 1.0f };
-	float  spinSpeed = 0.0f;
+	float m_FovDegree = 60.0f; // deg
+	float m_Near = 0.1f;
+	float m_Far = 5000.0f;
 
-	float  m_FovDegree = 60.0f;   // deg
-	float  m_Near = 0.1f;
-	float  m_Far = 5000.0f;
-
-	float  m_LightYaw = DirectX::XMConvertToRadians(-90.0f);
-	float  m_LightPitch = DirectX::XMConvertToRadians(60.0f);
-	Vector3 m_LightColor{ 1,1,1 };
+	float   m_LightYaw = DirectX::XMConvertToRadians(-90.0f);
+	float   m_LightPitch = DirectX::XMConvertToRadians(60.0f);
+	Vector3 m_LightColor{ 1, 1, 1 };
 	float   m_LightIntensity = 1.0f;
 
-	Vector3 cubeScale{ 5.0f, 5.0f, 5.0f };
-	Vector3 cubeTransformA{ 0.0f, 0.0f, -20.0f };
-	Vector3 cubeTransformB{ 5.0f, 0.0f,   0.0f };
-	Vector3 cubeTransformC{ 3.0f, 0.0f,   0.0f };
+	Vector3 cubeScale{ 5.0f,  5.0f,  5.0f };
+	Vector3 cubeTransformA{ 0.0f,  0.0f, -20.0f };
+	Vector3 cubeTransformB{ 5.0f,  0.0f,   0.0f };
+	Vector3 cubeTransformC{ 3.0f,  0.0f,   0.0f };
 
 	Vector3 m_Ia{ 0.1f, 0.1f, 0.1f };
 	Vector3 m_Ka{ 1.0f, 1.0f, 1.0f };
 	float   m_Ks = 0.9f;
 	float   m_Shininess = 64.0f;
 
-	XformUI      mTreeX, mCharX, mZeldaX;
+	XformUI      mTreeX;
+	XformUI      mCharX;
+	XformUI      mZeldaX;
 	XformUI      mBoxX;
 	XformUI      mSkinX;
 	DebugToggles mDbg;
 
-	Vector4 vLightDir, vLightColor;
+	Vector4 vLightDir;
+	Vector4 vLightColor;
 
 	// 디버그 화살표(표시 위치/스케일)
 	Vector3 m_ArrowPos{ 100.0f, 200.0f, 100.0f };
-	Vector3 m_ArrowScale{ 1.0f,    1.0f,  1.0f };
+	Vector3 m_ArrowScale{ 1.0f,   1.0f,   1.0f };
 
-	//============================================================================================
-	// 리지드 스켈레톤(박스휴먼) 컨트롤
-	//============================================================================================
+	//==========================================================================================
+	// 리지드 스켈레톤(박스 휴먼) 컨트롤
+	//==========================================================================================
 	std::unique_ptr<RigidSkeletal> mBoxRig;
+
 	double mAnimT = 0.0;  // 애니메이션 시간(초)
 	double mAnimSpeed = 1.0;  // 재생 속도 배율
 	bool   mBox_Play = true; // 재생/정지
-	bool   mBox_Loop = true; // 루프
-	float  mBox_Speed = 1.0f; // 재생 배수(음수=역재생)
+	bool   mBox_Loop = true; // 루프 여부
+	float  mBox_Speed = 1.0f; // 재생 배수(음수 = 역재생)
 
-	//툰 쉐이딩
-	// Toon ramp
+	//==========================================================================================
+	// 툰 셰이딩
+	//==========================================================================================
 	ID3D11ShaderResourceView* m_pRampSRV = nullptr; // PS t6
 	ID3D11Buffer* m_pToonCB = nullptr; // PS b7
 
-	struct ToonCB_ {
+	struct ToonCB_
+	{
 		UINT  useToon;
 		UINT  halfLambert;
 		float specStep;
 		float specBoost;
 		float shadowMin;
-		float pad0, pad1, pad2; // 16B 정렬
+		float pad0;
+		float pad1;
+		float pad2; // 16B 정렬
 	};
-
 };

@@ -236,33 +236,6 @@ void TutorialApp::RenderOpaquePass(
 			BindStaticMeshPipeline(ctx);
 		}
 
-		// B) OPAQUE 블록 맨 끝쪽에 붙여라
-		if (mDbg.showGrid) {
-			float bf[4] = { 0,0,0,0 };
-			ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
-			ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0);
-			ctx->RSSetState(m_pCullBackRS); // 윗면 보이게 만든 그 상태
-
-			ConstantBuffer local = {};
-			local.mWorld = XMMatrixTranspose(Matrix::Identity);
-			local.mWorldInvTranspose = Matrix::Identity;
-			local.mView = XMMatrixTranspose(view);
-			local.mProjection = XMMatrixTranspose(m_Projection);
-			local.vLightDir = baseCB.vLightDir;     // ← 조명 동일
-			local.vLightColor = baseCB.vLightColor;
-			ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &local, 0, 0);
-			ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
-			ctx->PSSetConstantBuffers(0, 1, &m_pConstantBuffer);
-
-			UINT stride = sizeof(DirectX::XMFLOAT3), offset = 0;
-			ctx->IASetInputLayout(mGridIL.Get());
-			ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			ctx->IASetVertexBuffers(0, 1, mGridVB.GetAddressOf(), &stride, &offset);
-			ctx->IASetIndexBuffer(mGridIB.Get(), DXGI_FORMAT_R16_UINT, 0);
-			ctx->VSSetShader(mGridVS.Get(), nullptr, 0);
-			ctx->PSSetShader(mGridPS.Get(), nullptr, 0);
-			ctx->DrawIndexed(mGridIndexCount, 0, 0);
-		}
 	}
 
 	//=============================================
@@ -424,7 +397,33 @@ void TutorialApp::RenderDebugPass(
 		SAFE_RELEASE(oVS); SAFE_RELEASE(oPS); SAFE_RELEASE(oIL);
 		SAFE_RELEASE(oBS); SAFE_RELEASE(oDSS); SAFE_RELEASE(oRS);
 	}
+	
+	if (mDbg.showGrid) {
+		float bf[4] = { 0,0,0,0 };
+		ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
+		ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0);
+		ctx->RSSetState(m_pCullBackRS); // 윗면 보이게 만든 그 상태
 
+		ConstantBuffer local = {};
+		local.mWorld = XMMatrixTranspose(Matrix::Identity);
+		local.mWorldInvTranspose = Matrix::Identity;
+		local.mView = XMMatrixTranspose(view);
+		local.mProjection = XMMatrixTranspose(m_Projection);
+		local.vLightDir = baseCB.vLightDir;     // ← 조명 동일
+		local.vLightColor = baseCB.vLightColor;
+		ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &local, 0, 0);
+		ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+		ctx->PSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+
+		UINT stride = sizeof(DirectX::XMFLOAT3), offset = 0;
+		ctx->IASetInputLayout(mGridIL.Get());
+		ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		ctx->IASetVertexBuffers(0, 1, mGridVB.GetAddressOf(), &stride, &offset);
+		ctx->IASetIndexBuffer(mGridIB.Get(), DXGI_FORMAT_R16_UINT, 0);
+		ctx->VSSetShader(mGridVS.Get(), nullptr, 0);
+		ctx->PSSetShader(mGridPS.Get(), nullptr, 0);
+		ctx->DrawIndexed(mGridIndexCount, 0, 0);
+	}
 	//=============================================
 }
 
