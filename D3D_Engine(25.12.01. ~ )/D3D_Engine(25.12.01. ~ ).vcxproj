@@ -151,7 +151,6 @@ endlocal
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="RigidSkeletal.cpp" />
     <ClCompile Include="SkinnedMesh.cpp" />
-    <ClCompile Include="SkinnedModelResource.cpp" />
     <ClCompile Include="SkinnedSkeletal.cpp" />
     <ClCompile Include="StaticMesh.cpp" />
     <ClCompile Include="TutorialApp_D3DInit.cpp" />

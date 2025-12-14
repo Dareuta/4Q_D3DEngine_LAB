@@ -4,75 +4,103 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <cstdint>
+#include <functional>
 
 struct ID3D11Device;
-struct ID3D11ShaderResourceView;
 
 class Texture2DResource;
 class StaticMeshResource;
 class SkinnedModelResource;
 
+enum class TextureColorSpace : uint8_t
+{
+    SRGB = 0,
+    Linear = 1
+};
+
+struct TextureKey
+{
+    std::wstring path;          // 정규화된 전체 경로
+    TextureColorSpace cs = TextureColorSpace::SRGB;
+};
+
+struct TextureKeyHash
+{
+    size_t operator()(const TextureKey& k) const noexcept
+    {
+        size_t h1 = std::hash<std::wstring>{}(k.path);
+        size_t h2 = std::hash<uint8_t>{}(static_cast<uint8_t>(k.cs));
+        // hash combine
+        return h1 ^ (h2 + 0x9e3779b97f4a7c15ull + (h1 << 6) + (h1 >> 2));
+    }
+};
+struct TextureKeyEq
+{
+    bool operator()(const TextureKey& a, const TextureKey& b) const noexcept
+    {
+        return a.cs == b.cs && a.path == b.path;
+    }
+};
+
+struct ModelKey
+{
+    std::wstring fbxPath;   // 정규화된 FBX 전체 경로
+    std::wstring texRoot;   // 정규화된 텍스처 루트(디렉토리)
+};
+
+struct ModelKeyHash
+{
+    size_t operator()(const ModelKey& k) const noexcept
+    {
+        size_t h1 = std::hash<std::wstring>{}(k.fbxPath);
+        size_t h2 = std::hash<std::wstring>{}(k.texRoot);
+        return h1 ^ (h2 + 0x9e3779b97f4a7c15ull + (h1 << 6) + (h1 >> 2));
+    }
+};
+struct ModelKeyEq
+{
+    bool operator()(const ModelKey& a, const ModelKey& b) const noexcept
+    {
+        return a.fbxPath == b.fbxPath && a.texRoot == b.texRoot;
+    }
+};
+
 class ResourceManager final
 {
 public:
-    // 싱글톤 접근
     static ResourceManager& Instance();
 
-    // TutorialApp::InitD3D 이후, m_pDevice 만들어진 다음에 한 번 호출
     void Initialize(ID3D11Device* device);
-
-    // 프로그램 끝날 때 호출 (OnUninitialize / UninitScene 직전이나 그 즈음)
     void Shutdown();
 
-    bool IsInitialized() const noexcept { return m_device != nullptr; }
-    ID3D11Device* GetDevice() const noexcept { return m_device; }
-
-    // ---------------------------------------------------------
-    // 1) 텍스처 2D
-    //    path: 전체 경로 (예: L"./Resource/Textures/xxx.dds")
-    // ---------------------------------------------------------
+    // 기존 호출들 깨지지 않게 유지(기본 SRGB)
     std::shared_ptr<Texture2DResource>
-        LoadTexture2D(const std::wstring& path);
+        LoadTexture2D(const std::wstring& path)
+    {
+        return LoadTexture2D(path, TextureColorSpace::SRGB);
+    }
 
-    // ---------------------------------------------------------
-    // 2) Static Mesh + Materials (PNTT)
-    //
-    //    fbxPath : FBX 파일 경로
-    //    texDir  : FBX가 사용하는 텍스처 root (예: L"./Resource/Textures/BoxHuman/")
-    //
-    //    같은 (fbxPath, texDir)로 두 번 이상 호출해도
-    //    GPU 리소스는 한 번만 만들어지고 공유됨.
-    // ---------------------------------------------------------
+    // 새 오버로드(캐시 키 분리 가능)
+    std::shared_ptr<Texture2DResource>
+        LoadTexture2D(const std::wstring& path, TextureColorSpace cs);
+
     std::shared_ptr<StaticMeshResource>
-        LoadStaticMesh(const std::wstring& fbxPath,
-            const std::wstring& texDir);
+        LoadStaticMesh(const std::wstring& fbxPath, const std::wstring& texDir);
 
-    // ---------------------------------------------------------
-    // 3) Skinned Mesh + Materials
-    //    (지금은 틀만 잡아두는 용도. 나중에 스키닝 쪽 연결)
-    // ---------------------------------------------------------
     std::shared_ptr<SkinnedModelResource>
-        LoadSkinnedModel(const std::wstring& fbxPath,
-            const std::wstring& texDir);
+        LoadSkinnedModel(const std::wstring& fbxPath, const std::wstring& texDir);
 
 private:
     ResourceManager() = default;
-    ~ResourceManager() = default;
 
-    ResourceManager(const ResourceManager&) = delete;
-    ResourceManager& operator=(const ResourceManager&) = delete;
+    ID3D11Device* m_device = nullptr;
 
-    // (fbxPath, texDir) 같이 두 개를 key로 쓰고 싶을 때
-    static std::wstring MakeKey(const std::wstring& a,
-        const std::wstring& b);
+    using TexCache = std::unordered_map<TextureKey, std::weak_ptr<Texture2DResource>, TextureKeyHash, TextureKeyEq>;
+    using StaticMeshCache = std::unordered_map<ModelKey, std::weak_ptr<StaticMeshResource>, ModelKeyHash, ModelKeyEq>;
+    using SkinnedMeshCache = std::unordered_map<ModelKey, std::weak_ptr<SkinnedModelResource>, ModelKeyHash, ModelKeyEq>;
 
-    ID3D11Device* m_device = nullptr; // 우리가 AddRef 안 함. TutorialApp이 소유.
-
-    using TexCache = std::unordered_map<std::wstring, std::weak_ptr<Texture2DResource>>;
-    using StaticMeshCache = std::unordered_map<std::wstring, std::weak_ptr<StaticMeshResource>>;
-    using SkinnedMeshCache = std::unordered_map<std::wstring, std::weak_ptr<SkinnedModelResource>>;
-
-    TexCache        m_texCache;
-    StaticMeshCache m_staticCache;
+    TexCache         m_texCache;
+    StaticMeshCache  m_staticCache;
     SkinnedMeshCache m_skinnedCache;
 };

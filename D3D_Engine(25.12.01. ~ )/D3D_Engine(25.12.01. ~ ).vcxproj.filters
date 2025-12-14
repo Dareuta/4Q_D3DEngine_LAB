@@ -62,9 +62,6 @@
     <ClCompile Include="ResourceManager.cpp">
       <Filter>WorkSpace\#ResourceManager</Filter>
     </ClCompile>
-    <ClCompile Include="SkinnedModelResource.cpp">
-      <Filter>WorkSpace\#ResourceManager</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TutorialApp.h">

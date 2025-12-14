@@ -220,7 +220,9 @@ void AssimpImporterEx::ExtractMaterials(const aiScene* sc, std::vector<MaterialC
 	auto grabTex = [&](aiMaterial* m, aiTextureType t) -> std::wstring {
 		aiString p;
 		if (m && m->GetTextureCount(t) > 0 && m->GetTexture(t, 0, &p) == AI_SUCCESS) {
-			return FileOnly(Widen(p)); // 파일명만
+			//return FileOnly(Widen(p)); // 파일명만
+			return path(Widen(p)).generic_wstring(); // 상대경로/서브폴더 유지
+
 		}
 		return L"";
 		};

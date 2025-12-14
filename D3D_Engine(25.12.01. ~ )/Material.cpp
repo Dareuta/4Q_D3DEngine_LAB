@@ -6,6 +6,7 @@
 
 #include "ResourceManager.h"      // ResourceManager::LoadTexture2D
 #include "Texture2DResource.h"
+#include <filesystem>
 
 // 텍스처 로딩은 전부 ResourceManager를 통해 진행
 void MaterialGPU::Build(ID3D11Device* dev, const MaterialCPU& cpu, const std::wstring& texRoot)
@@ -14,7 +15,15 @@ void MaterialGPU::Build(ID3D11Device* dev, const MaterialCPU& cpu, const std::ws
 
     auto join = [&](const std::wstring& f)->std::wstring
         {
-            return texRoot + f;
+            namespace fs = std::filesystem;
+            fs::path file(f);
+
+            // f가 절대경로면 그대로 사용
+            if (file.is_absolute())
+                return file.wstring();
+
+            fs::path root(texRoot);
+            return (root / file).wstring();
         };
 
     auto& rm = ResourceManager::Instance();
@@ -68,7 +77,9 @@ void MaterialGPU::Build(ID3D11Device* dev, const MaterialCPU& cpu, const std::ws
         bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         bd.Usage = D3D11_USAGE_DEFAULT;
         bd.ByteWidth = sizeof(CBMat);
-        dev->CreateBuffer(&bd, nullptr, &cbMat);
+        HRESULT hr = dev->CreateBuffer(&bd, nullptr, &cbMat);
+        if (FAILED(hr) || !cbMat)
+            throw std::runtime_error("MaterialGPU::Build - CreateBuffer failed.");
     }
 }
 
