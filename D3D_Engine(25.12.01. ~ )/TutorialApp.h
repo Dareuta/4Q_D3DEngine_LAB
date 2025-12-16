@@ -32,7 +32,6 @@
 #include "RigidSkeletal.h"
 #include "SkinnedSkeletal.h"
 #include "AssimpImporterEx.h"
-#include "ResourceManager.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")
@@ -417,9 +416,5 @@ private:
 	// 툰 셰이딩
 	//==========================================================================================
 	ID3D11ShaderResourceView* m_pRampSRV = nullptr; // PS t6
-	ID3D11Buffer* m_pToonCB = nullptr; // PS b7
-
-
-	std::shared_ptr<StaticMeshResource> m_boxHumanRes;
-	
+	ID3D11Buffer* m_pToonCB = nullptr; // PS b7			
 };

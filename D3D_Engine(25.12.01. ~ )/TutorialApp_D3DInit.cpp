@@ -77,15 +77,11 @@ bool TutorialApp::InitD3D()
 
 	m_pDeviceContext->RSSetViewports(1, &viewport);
 
-	ResourceManager::Instance().Initialize(m_pDevice);
-
 	return true;
 }
 
 void TutorialApp::UninitD3D()
-{ 
-	ResourceManager::Instance().Shutdown();
-
+{
 	SAFE_RELEASE(m_pDepthStencilState);
 	SAFE_RELEASE(m_pDepthStencilView);
 	SAFE_RELEASE(m_pDepthStencil);

@@ -148,7 +148,6 @@ endlocal
   <ItemGroup>
     <ClCompile Include="AssimpImporterEX.cpp" />
     <ClCompile Include="Material.cpp" />
-    <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="RigidSkeletal.cpp" />
     <ClCompile Include="SkinnedMesh.cpp" />
     <ClCompile Include="SkinnedSkeletal.cpp" />
@@ -165,14 +164,10 @@ endlocal
     <ClInclude Include="Material.h" />
     <ClInclude Include="MeshDataEx.h" />
     <ClInclude Include="RenderSharedCB.h" />
-    <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="RigidSkeletal.h" />
     <ClInclude Include="SkinnedMesh.h" />
-    <ClInclude Include="SkinnedModelResource.h" />
     <ClInclude Include="SkinnedSkeletal.h" />
     <ClInclude Include="StaticMesh.h" />
-    <ClInclude Include="StaticMeshResource.h" />
-    <ClInclude Include="Texture2DResource.h" />
     <ClInclude Include="TutorialApp.h" />
   </ItemGroup>
   <ItemGroup>
