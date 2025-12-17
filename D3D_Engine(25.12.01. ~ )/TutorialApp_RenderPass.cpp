@@ -15,7 +15,7 @@ void TutorialApp::RenderShadowPass_Main(
 	{
 		// t5 언바인드, DSV only
 		ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
-		ctx->PSSetShaderResources(5, 1, nullSRV);
+		ctx->PSSetShaderResources(5, 1, nullSRV);		
 		ctx->OMSetRenderTargets(0, nullptr, mShadowDSV.Get());
 		ctx->ClearDepthStencilView(mShadowDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
@@ -381,6 +381,8 @@ void TutorialApp::RenderDebugPass(
 		const DirectX::XMFLOAT4 kBright = { 1.0f, 0.95f, 0.2f, 1.0f };
 		ctx->UpdateSubresource(m_pDbgCB, 0, nullptr, &kBright, 0, 0);
 		ctx->PSSetConstantBuffers(3, 1, &m_pDbgCB);
+
+
 		ctx->DrawIndexed(indexCount, 0, 0);
 
 		// 상태 복구

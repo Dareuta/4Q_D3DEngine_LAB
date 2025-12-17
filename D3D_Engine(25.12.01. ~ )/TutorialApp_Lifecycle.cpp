@@ -81,7 +81,15 @@ void TutorialApp::OnUpdate()
 void TutorialApp::OnRender()
 {
 	auto* ctx = m_pDeviceContext;
-	
+
+	ID3D11SamplerState* s0 = m_pSamplerLinear;
+	ID3D11SamplerState* s1 = mSamShadowCmp.Get();
+	ID3D11SamplerState* s2 = m_pSamplerLinear;
+
+	ID3D11SamplerState* samps[3] = { s0, s1, s2 };
+	ctx->PSSetSamplers(0, 3, samps); // 일단 전부 채워두고 생각하자
+
+
 	// 0) 라이트 카메라/섀도우 CB 업데이트 
 
 	UpdateLightCameraAndShadowCB(ctx); // mLightView, mLightProj, mShadowVP, mCB_Shadow
@@ -150,21 +158,21 @@ void TutorialApp::OnRender()
 	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ctx->VSSetShader(m_pMeshVS, nullptr, 0);
 	ctx->PSSetShader(m_pMeshPS, nullptr, 0);
-	if (m_pSamplerLinear) ctx->PSSetSamplers(0, 1, &m_pSamplerLinear);
+	//if (m_pSamplerLinear) ctx->PSSetSamplers(0, 1, &m_pSamplerLinear);
 
 	//============================================================================================
-	
+
 	// 3) SHADOW PASS (DepthOnly)  
 	RenderShadowPass_Main(ctx, cb);
 	// 4) SKYBOX (선택)
 	RenderSkyPass(ctx, viewNoTrans);
 
 	// 5) 본 패스에서 섀도우 샘플 바인드 (PS: t5/s1/b6)
-	{				
+	{
 		ID3D11Buffer* b6r = mCB_Shadow.Get();
 		ID3D11SamplerState* cmp = mSamShadowCmp.Get();
 		ID3D11ShaderResourceView* shSRV = mShadowSRV.Get();
-		
+
 		ctx->PSSetConstantBuffers(6, 1, &b6r);
 		ctx->PSSetSamplers(1, 1, &cmp);
 		ctx->PSSetShaderResources(5, 1, &shSRV);
