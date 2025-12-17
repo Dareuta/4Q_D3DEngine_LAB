@@ -70,6 +70,8 @@ float4 main(PS_INPUT input) : SV_Target
     float3 diff;
     float3 spec;
  
+    float shadow = SampleShadow_PCF(input.WorldPos, Nw);
+    
     if (gUseToon != 0)
     {
     // 1) 디퓨즈: N·L → 램프 샘플
@@ -79,15 +81,22 @@ float4 main(PS_INPUT input) : SV_Target
         
         ndl = saturate(ndl);
 
+        
+        float shadowToon = (shadow > 0.5f) ? 1.0f : gToonShadowMin;
+        float litForRamp = ndl * shadowToon;
+        
         //float3 ramp = txRamp.Sample(samRampPointClamp, float2(ndl, 0.5f)).rgb;
         //ramp = max(ramp, gToonShadowMin.xxx); // 바닥 띄우기(옵션)
         
         uint w, h;
         txRamp.GetDimensions(w, h); // OK
 
-        float u = (ndl * (float) (w - 1) + 0.5f) / (float) w;
-        float3 ramp = txRamp.SampleLevel(samRampPointClamp, float2(u, 0.5f), 0).rgb;
         
+        //float u = (ndl * (float) (w - 1) + 0.5f) / (float) w;
+         
+        float u = (litForRamp * (float) (w - 1) + 0.5f) / (float) w;
+        
+        float3 ramp = txRamp.SampleLevel(samRampPointClamp, float2(u, 0.5f), 0).rgb;        
         ramp = max(ramp, gToonShadowMin.xxx);
 
         diff = albedo * ramp; // 램프 기반 디퓨즈
@@ -119,8 +128,7 @@ float4 main(PS_INPUT input) : SV_Target
 
     float3 amb = I_ambient.rgb * kA.rgb * albedo;
     
-    float shadow = SampleShadow_PCF(input.WorldPos, Nw);
-    float3 direct = (diff + spec) * shadow;
+    float3 direct = (diff + spec);
     
     float3 color = amb + emissive + vLightColor.rgb * direct;
 
