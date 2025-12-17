@@ -107,36 +107,36 @@ void TutorialApp::UpdateImGUI()
 		//---------------------------------------------------
 
 
-		if (ImGui::Begin("Toon Shading"), ImGuiCond_FirstUseEver) {
+	/*	if (ImGui::Begin("Toon Shading"), ImGuiCond_FirstUseEver) {
 			ImGui::Checkbox("Use Toon", &mDbg.useToon);
 			ImGui::Checkbox("Half-Lambert", &mDbg.toonHalfLambert);
 			ImGui::DragFloat("Spec Step", &mDbg.toonSpecStep, 0.01f, 0.0f, 1.0f, "%.2f");
 			ImGui::DragFloat("Spec Boost", &mDbg.toonSpecBoost, 0.01f, 0.0f, 3.0f, "%.2f");
 			ImGui::DragFloat("Shadow Min", &mDbg.toonShadowMin, 0.005f, 0.0f, 0.10f, "%.3f");
 		}
-		ImGui::End();
+		ImGui::End();*/
 
-		if (ImGui::Begin("Shadow / Light Camera")) {
-			if (ImGui::CollapsingHeader("PBR"))
-			{
-				ImGui::Checkbox("Enable PBR", &mPbr.enable);
-				ImGui::Checkbox("Char Only", &mPbr.charOnly);
 
-				ImGui::SeparatorText("Use Textures");
-				ImGui::Checkbox("BaseColor Tex", &mPbr.useBaseColorTex);
-				ImGui::Checkbox("Normal Tex", &mPbr.useNormalTex);
-				ImGui::Checkbox("Metallic Tex", &mPbr.useMetalTex);
-				ImGui::Checkbox("Roughness Tex", &mPbr.useRoughTex);
+		if (ImGui::Begin("PBR")) {
 
-				ImGui::SeparatorText("Overrides (when tex OFF)");
-				ImGui::ColorEdit3("BaseColor", (float*)&mPbr.baseColor);
-				ImGui::SliderFloat("Metallic", &mPbr.metallic, 0.0f, 1.0f);
-				ImGui::SliderFloat("Roughness", &mPbr.roughness, 0.02f, 1.0f);
+			ImGui::Checkbox("Enable PBR", &mPbr.enable);
+			//ImGui::Checkbox("Char Only", &mPbr.charOnly);
 
-				ImGui::SeparatorText("Normal Map Options");
-				ImGui::Checkbox("Flip Normal Y", &mPbr.flipNormalY);
-				ImGui::SliderFloat("Normal Strength", &mPbr.normalStrength, 0.0f, 2.0f);
-			}
+			ImGui::SeparatorText("Use Textures");
+			ImGui::Checkbox("BaseColor Tex", &mPbr.useBaseColorTex);
+			ImGui::Checkbox("Normal Tex", &mPbr.useNormalTex);
+			ImGui::Checkbox("Metallic Tex", &mPbr.useMetalTex);
+			ImGui::Checkbox("Roughness Tex", &mPbr.useRoughTex);
+
+			ImGui::SeparatorText("Overrides (when tex OFF)");
+			ImGui::ColorEdit3("BaseColor", (float*)&mPbr.baseColor);
+			ImGui::SliderFloat("Metallic", &mPbr.metallic, 0.0f, 1.0f);
+			ImGui::SliderFloat("Roughness", &mPbr.roughness, 0.02f, 1.0f);
+
+			ImGui::SeparatorText("Normal Map Options");
+			ImGui::Checkbox("Flip Normal Y", &mPbr.flipNormalY);
+			ImGui::SliderFloat("Normal Strength", &mPbr.normalStrength, 0.0f, 2.0f);
+
 		}
 		ImGui::End();
 
@@ -335,6 +335,13 @@ void TutorialApp::UpdateImGUI()
 			}
 		}
 
+		if (ImGui::CollapsingHeader(u8"Toon Shading")) {
+			ImGui::Checkbox("Use Toon", &mDbg.useToon);
+			ImGui::Checkbox("Half-Lambert", &mDbg.toonHalfLambert);
+			ImGui::DragFloat("Spec Step", &mDbg.toonSpecStep, 0.01f, 0.0f, 1.0f, "%.2f");
+			ImGui::DragFloat("Spec Boost", &mDbg.toonSpecBoost, 0.01f, 0.0f, 3.0f, "%.2f");
+			ImGui::DragFloat("Shadow Min", &mDbg.toonShadowMin, 0.005f, 0.0f, 0.10f, "%.3f");
+		}
 
 		// === Toggles / Render Debug ===
 		if (ImGui::CollapsingHeader(u8"Toggles & Debug"))

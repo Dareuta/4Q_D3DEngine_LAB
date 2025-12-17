@@ -15,7 +15,7 @@ void TutorialApp::RenderShadowPass_Main(
 	{
 		// t5 언바인드, DSV only
 		ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
-		ctx->PSSetShaderResources(5, 1, nullSRV);		
+		ctx->PSSetShaderResources(5, 1, nullSRV);
 		ctx->OMSetRenderTargets(0, nullptr, mShadowDSV.Get());
 		ctx->ClearDepthStencilView(mShadowDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
@@ -64,8 +64,8 @@ void TutorialApp::RenderShadowPass_Main(
 		if (mTreeX.enabled) { Matrix W = ComposeSRT(mTreeX);  DrawDepth_Static(gTree, gTreeMtls, W, false); DrawDepth_Static(gTree, gTreeMtls, W, true); }
 		if (mCharX.enabled) { Matrix W = ComposeSRT(mCharX);  DrawDepth_Static(gChar, gCharMtls, W, false); DrawDepth_Static(gChar, gCharMtls, W, true); }
 		if (mZeldaX.enabled) { Matrix W = ComposeSRT(mZeldaX); DrawDepth_Static(gZelda, gZeldaMtls, W, false); DrawDepth_Static(gZelda, gZeldaMtls, W, true); }
-		
-		//if (mFemaleX.enabled) { Matrix W = ComposeSRT(mFemaleX); DrawDepth_Static(gFemale, gFemaleMtls, W, false); DrawDepth_Static(gFemale, gFemaleMtls, W, true); }
+
+		if (mFemaleX.enabled) { Matrix W = ComposeSRT(mFemaleX); DrawDepth_Static(gFemale, gFemaleMtls, W, false); DrawDepth_Static(gFemale, gFemaleMtls, W, true); }
 
 		if (mBoxRig && mBoxX.enabled)
 		{
@@ -220,11 +220,11 @@ void TutorialApp::RenderOpaquePass(
 		if (mTreeX.enabled)  DrawStaticOpaqueOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
 		if (mCharX.enabled)  DrawStaticOpaqueOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
 		if (mZeldaX.enabled) DrawStaticOpaqueOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
-		
+
 		//if (mFemaleX.enabled) DrawStaticOpaqueOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
 
 		if (mFemaleX.enabled) {
-			if (mPbr.enable && mPbr.charOnly) BindStaticMeshPipeline_PBR(ctx);
+			if (mPbr.enable) BindStaticMeshPipeline_PBR(ctx);
 			else                             BindStaticMeshPipeline(ctx);
 
 			DrawStaticOpaqueOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
@@ -274,12 +274,12 @@ void TutorialApp::RenderCutoutPass(
 			if (mTreeX.enabled)  DrawStaticAlphaCutOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
 			if (mCharX.enabled)  DrawStaticAlphaCutOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
 			if (mZeldaX.enabled) DrawStaticAlphaCutOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
-			
+
 			if (mFemaleX.enabled)
 			{
-				if (mPbr.enable && mPbr.charOnly) BindStaticMeshPipeline_PBR(ctx);
-				else                             BindStaticMeshPipeline(ctx);		
-	
+				if (mPbr.enable) BindStaticMeshPipeline_PBR(ctx);
+				else                             BindStaticMeshPipeline(ctx);
+
 				DrawStaticAlphaCutOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
 				BindStaticMeshPipeline(ctx);
 			}

@@ -344,7 +344,7 @@ private:
 
 		float alphaCut = 0.4f;
 
-		bool  useToon = true;
+		bool  useToon = false;
 		bool  toonHalfLambert = true;
 		float toonSpecStep = 0.55f;
 		float toonSpecBoost = 1.0f;
@@ -434,7 +434,7 @@ private:
 	struct PBRUI
 	{
 		bool enable = true;           // PBR 켜기/끄기
-		bool charOnly = true;         // char만 PBR 적용(기존 모델들 안 망가뜨리기)
+		//bool charOnly = true;         // char만 PBR 적용(기존 모델들 안 망가뜨리기)
 
 		bool useBaseColorTex = true;
 		bool useNormalTex = true;
