@@ -64,6 +64,8 @@ void TutorialApp::RenderShadowPass_Main(
 		if (mTreeX.enabled) { Matrix W = ComposeSRT(mTreeX);  DrawDepth_Static(gTree, gTreeMtls, W, false); DrawDepth_Static(gTree, gTreeMtls, W, true); }
 		if (mCharX.enabled) { Matrix W = ComposeSRT(mCharX);  DrawDepth_Static(gChar, gCharMtls, W, false); DrawDepth_Static(gChar, gCharMtls, W, true); }
 		if (mZeldaX.enabled) { Matrix W = ComposeSRT(mZeldaX); DrawDepth_Static(gZelda, gZeldaMtls, W, false); DrawDepth_Static(gZelda, gZeldaMtls, W, true); }
+		
+		if (mFemaleX.enabled) { Matrix W = ComposeSRT(mFemaleX); DrawDepth_Static(gFemale, gFemaleMtls, W, false); DrawDepth_Static(gFemale, gFemaleMtls, W, true); }
 
 		if (mBoxRig && mBoxX.enabled)
 		{

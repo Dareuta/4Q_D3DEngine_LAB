@@ -198,9 +198,12 @@ private:
 	StaticMesh               gTree;
 	StaticMesh               gChar;
 	StaticMesh               gZelda;
+	StaticMesh				 gFemale;
+
 	std::vector<MaterialGPU> gTreeMtls;
 	std::vector<MaterialGPU> gCharMtls;
 	std::vector<MaterialGPU> gZeldaMtls;
+	std::vector<MaterialGPU> gFemaleMtls;
 
 	// 박스 휴먼 (정적 메쉬 + 리지드 스켈레톤)
 	StaticMesh               gBoxHuman;
@@ -299,7 +302,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>  mGridPS;
 
 	UINT  mGridIndexCount = 0;
-	float mGridHalfSize = 1000.0f; // +- 범위
+	float mGridHalfSize = 1500.0f; // +- 범위
 	float mGridY = -200.0f; // y 높이
 
 	//==========================================================================================
@@ -390,6 +393,8 @@ private:
 	XformUI      mTreeX;
 	XformUI      mCharX;
 	XformUI      mZeldaX;
+	XformUI		 mFemaleX;
+
 	XformUI      mBoxX;
 	XformUI      mSkinX;
 	DebugToggles mDbg;

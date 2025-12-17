@@ -4,6 +4,11 @@
 #include <d3dcompiler.h>
 #include <directXTK/DDSTextureLoader.h>
 #include <directXTK/WICTextureLoader.h>
+
+#include <DirectXTex.h>
+#include <filesystem>
+#include <cwctype> // towlower
+
 #include <dxgidebug.h>
 #include <dxgi1_3.h>    // DXGIGetDebugInterface1
 
@@ -72,6 +77,41 @@ HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCS
 
 HRESULT CreateTextureFromFile(ID3D11Device* d3dDevice, const wchar_t* szFileName, ID3D11ShaderResourceView** textureView)
 {
+
+	auto ext = std::filesystem::path(szFileName).extension().wstring();
+	for (auto& c : ext) c = (wchar_t)towlower(c);
+
+	if (ext == L".tga")
+	{
+		DirectX::ScratchImage img;
+		DirectX::TexMetadata meta{};
+
+		HRESULT hr = DirectX::LoadFromTGAFile(
+			szFileName,
+			DirectX::TGA_FLAGS_NONE,
+			&meta, img
+		);
+
+		if (FAILED(hr)) {
+			MessageBoxW(NULL, GetComErrorString(hr), szFileName, MB_OK);
+			return hr;
+		}
+
+		hr = DirectX::CreateShaderResourceView(
+			d3dDevice,
+			img.GetImages(),
+			img.GetImageCount(),
+			meta, textureView
+		);
+
+		if (FAILED(hr)) {
+			MessageBoxW(NULL, GetComErrorString(hr), szFileName, MB_OK);
+			return hr;
+		}
+
+		return S_OK;
+	}
+
 	HRESULT hr = S_OK;
 
 	// Load the Texture
@@ -85,10 +125,9 @@ HRESULT CreateTextureFromFile(ID3D11Device* d3dDevice, const wchar_t* szFileName
 			return hr;
 		}
 	}
+
 	return S_OK;
 }
-
-
 
 void CheckDXGIDebug()
 {

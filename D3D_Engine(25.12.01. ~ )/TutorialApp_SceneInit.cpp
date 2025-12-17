@@ -171,7 +171,7 @@ bool TutorialApp::InitScene()
 	mBoxX.pos = { -200, -150, 400 }; mBoxX.scl = { 0.2f,0.2f,0.2f };
 	mSkinX.pos = { 200, -150, 400 };
 
-	//mTreeX.enabled = mCharX.enabled = mZeldaX.enabled = mBoxX.enabled = false;
+	mTreeX.enabled = mCharX.enabled = mZeldaX.enabled = mBoxX.enabled = mSkinX.enabled = false;
 
 	mTreeX.initScl = mTreeX.scl; mCharX.initScl = mCharX.scl; mZeldaX.initScl = mZeldaX.scl;
 	mTreeX.initRotD = mTreeX.rotD; mCharX.initRotD = mCharX.rotD; mZeldaX.initRotD = mZeldaX.rotD;
@@ -200,6 +200,7 @@ bool TutorialApp::InitScene()
 		BuildAll(L"../Resource/Character/Character.fbx", L"../Resource/Character/", gChar, gCharMtls);
 		BuildAll(L"../Resource/Zelda/zeldaPosed001.fbx", L"../Resource/Zelda/", gZelda, gZeldaMtls);
 		BuildAll(L"../Resource/BoxHuman/BoxHuman.fbx", L"../Resource/BoxHuman/", gBoxHuman, gBoxMtls);
+		BuildAll(L"../Resource/FBX/char.fbx", L"../Resource/FBX/", gFemale, gFemaleMtls);
 
 		mBoxRig = RigidSkeletal::LoadFromFBX(m_pDevice,
 			L"../Resource/BoxHuman/BoxHuman.fbx",

@@ -120,7 +120,7 @@ void TutorialApp::UpdateImGUI()
 		{
 			// ── Lighting ────────────────────────────────────────────────
 			ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
-			if (ImGui::CollapsingHeader(u8"Lighting", ImGuiTreeNodeFlags_DefaultOpen))
+			if (ImGui::CollapsingHeader(u8"Lighting"))
 			{
 				ImGui::SliderAngle("Yaw", &m_LightYaw, -180.0f, 180.0f);
 				ImGui::SliderAngle("Pitch", &m_LightPitch, -89.0f, 89.0f);
