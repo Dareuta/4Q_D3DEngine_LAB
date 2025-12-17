@@ -381,10 +381,6 @@ void TutorialApp::RenderDebugPass(
 		const DirectX::XMFLOAT4 kBright = { 1.0f, 0.95f, 0.2f, 1.0f };
 		ctx->UpdateSubresource(m_pDbgCB, 0, nullptr, &kBright, 0, 0);
 		ctx->PSSetConstantBuffers(3, 1, &m_pDbgCB);
-
-		ID3D11ShaderResourceView* nullAll[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT] = {};
-		ctx->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullAll);
-
 		ctx->DrawIndexed(indexCount, 0, 0);
 
 		// 상태 복구
