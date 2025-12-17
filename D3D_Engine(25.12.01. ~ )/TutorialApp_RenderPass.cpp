@@ -222,6 +222,7 @@ void TutorialApp::RenderOpaquePass(
 		if (mZeldaX.enabled) DrawStaticOpaqueOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
 		
 		//if (mFemaleX.enabled) DrawStaticOpaqueOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
+
 		if (mFemaleX.enabled) {
 			if (mPbr.enable && mPbr.charOnly) BindStaticMeshPipeline_PBR(ctx);
 			else                             BindStaticMeshPipeline(ctx);
@@ -274,6 +275,15 @@ void TutorialApp::RenderCutoutPass(
 			if (mCharX.enabled)  DrawStaticAlphaCutOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
 			if (mZeldaX.enabled) DrawStaticAlphaCutOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
 			
+			if (mFemaleX.enabled)
+			{
+				if (mPbr.enable && mPbr.charOnly) BindStaticMeshPipeline_PBR(ctx);
+				else                             BindStaticMeshPipeline(ctx);		
+	
+				DrawStaticAlphaCutOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
+				BindStaticMeshPipeline(ctx);
+			}
+
 			//if (mFemaleX.enabled) DrawStaticAlphaCutOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
 
 			if (mBoxRig && mBoxX.enabled) {
@@ -327,7 +337,7 @@ void TutorialApp::RenderTransparentPass(
 		if (mCharX.enabled)  DrawStaticTransparentOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
 		if (mZeldaX.enabled) DrawStaticTransparentOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
 
-		if (mFemaleX.enabled) DrawStaticTransparentOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
+		//if (mFemaleX.enabled) DrawStaticTransparentOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
 
 		if (mBoxRig && mBoxX.enabled) {
 			mBoxRig->DrawTransparentOnly(ctx, ComposeSRT(mBoxX),
