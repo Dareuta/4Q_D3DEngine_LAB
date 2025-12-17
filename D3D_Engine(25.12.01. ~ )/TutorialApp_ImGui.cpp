@@ -116,6 +116,31 @@ void TutorialApp::UpdateImGUI()
 		}
 		ImGui::End();
 
+		if (ImGui::Begin("Shadow / Light Camera")) {
+			if (ImGui::CollapsingHeader("PBR"))
+			{
+				ImGui::Checkbox("Enable PBR", &mPbr.enable);
+				ImGui::Checkbox("Char Only", &mPbr.charOnly);
+
+				ImGui::SeparatorText("Use Textures");
+				ImGui::Checkbox("BaseColor Tex", &mPbr.useBaseColorTex);
+				ImGui::Checkbox("Normal Tex", &mPbr.useNormalTex);
+				ImGui::Checkbox("Metallic Tex", &mPbr.useMetalTex);
+				ImGui::Checkbox("Roughness Tex", &mPbr.useRoughTex);
+
+				ImGui::SeparatorText("Overrides (when tex OFF)");
+				ImGui::ColorEdit3("BaseColor", (float*)&mPbr.baseColor);
+				ImGui::SliderFloat("Metallic", &mPbr.metallic, 0.0f, 1.0f);
+				ImGui::SliderFloat("Roughness", &mPbr.roughness, 0.02f, 1.0f);
+
+				ImGui::SeparatorText("Normal Map Options");
+				ImGui::Checkbox("Flip Normal Y", &mPbr.flipNormalY);
+				ImGui::SliderFloat("Normal Strength", &mPbr.normalStrength, 0.0f, 2.0f);
+			}
+		}
+		ImGui::End();
+
+
 		if (ImGui::Begin("Shadow / Light Camera"))
 		{
 			// ── Lighting ────────────────────────────────────────────────

@@ -85,3 +85,15 @@ using BlinnPhongCB = RenderCB::BlinnPhong;
 using UseCB = RenderCB::Use;
 using ShadowCB = RenderCB::Shadow;
 using ToonCB_ = RenderCB::Toon;
+
+struct CB_PBRParams
+{
+	UINT useBaseColorTex;
+	UINT useNormalTex;
+	UINT useMetalTex;
+	UINT useRoughTex;
+
+	DirectX::XMFLOAT4 baseColorOverride; // rgb
+	DirectX::XMFLOAT4 m_r_n_flags;       // x=metallic, y=roughness, z=normalStrength, w=flipNormalY(0/1)
+};
+static_assert((sizeof(CB_PBRParams) % 16) == 0);

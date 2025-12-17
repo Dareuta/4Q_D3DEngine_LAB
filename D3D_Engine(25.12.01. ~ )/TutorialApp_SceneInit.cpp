@@ -64,6 +64,21 @@ bool TutorialApp::InitScene()
 		CreatePS(psb, &m_pDbgPS);
 	}
 
+	//=====================================
+	// PBR Pixel Shader
+	ID3DBlob* pbrPS = nullptr;
+	HR_T(CompileShaderFromFile(L"../Resource/Shader/PBR_PS.hlsl", "main", "ps_5_0", &pbrPS));
+	HR_T(m_pDevice->CreatePixelShader(pbrPS->GetBufferPointer(), pbrPS->GetBufferSize(), nullptr, &m_pPBRPS));
+	SAFE_RELEASE(pbrPS);
+
+	// PBR Params CB (b8)
+	D3D11_BUFFER_DESC bd{};
+	bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	bd.Usage = D3D11_USAGE_DEFAULT;
+	bd.ByteWidth = sizeof(CB_PBRParams);
+	HR_T(m_pDevice->CreateBuffer(&bd, nullptr, &m_pPBRParamsCB));
+
+
 	// =========================================================
 	// 3) Skinned VS(+IL)
 	// =========================================================
@@ -178,6 +193,8 @@ bool TutorialApp::InitScene()
 	mBoxX.initScl = mBoxX.scl; mBoxX.initRotD = mBoxX.rotD; mBoxX.initPos = mBoxX.pos;
 	mSkinX.initScl = mSkinX.scl; mSkinX.initRotD = mSkinX.rotD; mSkinX.initPos = mSkinX.pos;
 
+	mFemaleX.initScl = mFemaleX.scl; mFemaleX.initRotD = mFemaleX.rotD; mFemaleX.initPos = mFemaleX.pos;
+
 	// =========================================================
 	// 7) Load FBX + build GPU
 	// =========================================================
@@ -200,6 +217,7 @@ bool TutorialApp::InitScene()
 		BuildAll(L"../Resource/Character/Character.fbx", L"../Resource/Character/", gChar, gCharMtls);
 		BuildAll(L"../Resource/Zelda/zeldaPosed001.fbx", L"../Resource/Zelda/", gZelda, gZeldaMtls);
 		BuildAll(L"../Resource/BoxHuman/BoxHuman.fbx", L"../Resource/BoxHuman/", gBoxHuman, gBoxMtls);
+		
 		BuildAll(L"../Resource/FBX/char.fbx", L"../Resource/FBX/", gFemale, gFemaleMtls);
 
 		mBoxRig = RigidSkeletal::LoadFromFBX(m_pDevice,
@@ -551,4 +569,7 @@ void TutorialApp::UninitScene()
 	//툰툰
 	SAFE_RELEASE(m_pRampSRV);
 	SAFE_RELEASE(m_pToonCB);
+
+	SAFE_RELEASE(m_pPBRPS);
+	SAFE_RELEASE(m_pPBRParamsCB);
 }

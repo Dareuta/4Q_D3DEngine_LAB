@@ -153,6 +153,19 @@ void TutorialApp::OnRender()
 	ctx->UpdateSubresource(m_pBlinnCB, 0, nullptr, &bp, 0, 0);
 	ctx->PSSetConstantBuffers(1, 1, &m_pBlinnCB);
 
+	// PBR params update (매 프레임)
+	CB_PBRParams pbr{};
+	pbr.useBaseColorTex = mPbr.useBaseColorTex ? 1u : 0u;
+	pbr.useNormalTex = mPbr.useNormalTex ? 1u : 0u;
+	pbr.useMetalTex = mPbr.useMetalTex ? 1u : 0u;
+	pbr.useRoughTex = mPbr.useRoughTex ? 1u : 0u;
+
+	pbr.baseColorOverride = { mPbr.baseColor.x, mPbr.baseColor.y, mPbr.baseColor.z, 1.0f };
+	pbr.m_r_n_flags = { mPbr.metallic, mPbr.roughness, mPbr.normalStrength, mPbr.flipNormalY ? 1.0f : 0.0f };
+
+	ctx->UpdateSubresource(m_pPBRParamsCB, 0, nullptr, &pbr, 0, 0);
+	ctx->PSSetConstantBuffers(8, 1, &m_pPBRParamsCB); // b8
+
 	// 공통 셰이더(정적 메쉬) 기본 바인드
 	ctx->IASetInputLayout(m_pMeshIL);
 	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

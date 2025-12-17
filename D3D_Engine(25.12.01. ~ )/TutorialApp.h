@@ -115,6 +115,8 @@ private:
 	// Render helpers (정적/스키닝 파이프라인 + 정적 드로우)
 	//==========================================================================================
 	void BindStaticMeshPipeline(ID3D11DeviceContext* ctx);
+	void BindStaticMeshPipeline_PBR(ID3D11DeviceContext* ctx);
+
 	void BindSkinnedMeshPipeline(ID3D11DeviceContext* ctx);
 
 	void DrawStaticOpaqueOnly(
@@ -422,4 +424,29 @@ private:
 	//==========================================================================================
 	ID3D11ShaderResourceView* m_pRampSRV = nullptr; // PS t6
 	ID3D11Buffer* m_pToonCB = nullptr; // PS b7			
+
+
+	//==========================================================================================
+	
+	ID3D11PixelShader* m_pPBRPS = nullptr;
+	ID3D11Buffer* m_pPBRParamsCB = nullptr;
+
+	struct PBRUI
+	{
+		bool enable = true;           // PBR 켜기/끄기
+		bool charOnly = true;         // char만 PBR 적용(기존 모델들 안 망가뜨리기)
+
+		bool useBaseColorTex = true;
+		bool useNormalTex = true;
+		bool useMetalTex = true;
+		bool useRoughTex = true;
+
+		bool flipNormalY = false; // 노말맵 녹색 채널 뒤집기용(에셋에 따라 필요할 때가 있음)
+		float normalStrength = 1.0f;
+
+		DirectX::SimpleMath::Vector3 baseColor = { 1,1,1 };
+		float metallic = 0.0f;
+		float roughness = 0.5f;       // 0에 가까울수록 거울
+	} mPbr;
+
 };

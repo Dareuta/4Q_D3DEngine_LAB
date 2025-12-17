@@ -235,7 +235,7 @@ bool AssimpImporterEx::LoadFBX_PNTT_AndMaterials(
             out.indices.push_back(baseV + face.mIndices[1]);
             out.indices.push_back(baseV + face.mIndices[2]);
         }
-
+         
         sm.indexCount = m->mNumFaces * 3;
 
         baseV += m->mNumVertices;

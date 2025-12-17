@@ -65,7 +65,7 @@ void TutorialApp::RenderShadowPass_Main(
 		if (mCharX.enabled) { Matrix W = ComposeSRT(mCharX);  DrawDepth_Static(gChar, gCharMtls, W, false); DrawDepth_Static(gChar, gCharMtls, W, true); }
 		if (mZeldaX.enabled) { Matrix W = ComposeSRT(mZeldaX); DrawDepth_Static(gZelda, gZeldaMtls, W, false); DrawDepth_Static(gZelda, gZeldaMtls, W, true); }
 		
-		if (mFemaleX.enabled) { Matrix W = ComposeSRT(mFemaleX); DrawDepth_Static(gFemale, gFemaleMtls, W, false); DrawDepth_Static(gFemale, gFemaleMtls, W, true); }
+		//if (mFemaleX.enabled) { Matrix W = ComposeSRT(mFemaleX); DrawDepth_Static(gFemale, gFemaleMtls, W, false); DrawDepth_Static(gFemale, gFemaleMtls, W, true); }
 
 		if (mBoxRig && mBoxX.enabled)
 		{
@@ -220,6 +220,17 @@ void TutorialApp::RenderOpaquePass(
 		if (mTreeX.enabled)  DrawStaticOpaqueOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
 		if (mCharX.enabled)  DrawStaticOpaqueOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
 		if (mZeldaX.enabled) DrawStaticOpaqueOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
+		
+		//if (mFemaleX.enabled) DrawStaticOpaqueOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
+		if (mFemaleX.enabled) {
+			if (mPbr.enable && mPbr.charOnly) BindStaticMeshPipeline_PBR(ctx);
+			else                             BindStaticMeshPipeline(ctx);
+
+			DrawStaticOpaqueOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
+
+			// 다음 드로우가 기존 PS 쓰도록 원복
+			BindStaticMeshPipeline(ctx);
+		}
 
 		if (mBoxRig && mBoxX.enabled) {
 			mBoxRig->DrawOpaqueOnly(ctx, ComposeSRT(mBoxX),
@@ -262,6 +273,8 @@ void TutorialApp::RenderCutoutPass(
 			if (mTreeX.enabled)  DrawStaticAlphaCutOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
 			if (mCharX.enabled)  DrawStaticAlphaCutOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
 			if (mZeldaX.enabled) DrawStaticAlphaCutOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
+			
+			//if (mFemaleX.enabled) DrawStaticAlphaCutOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
 
 			if (mBoxRig && mBoxX.enabled) {
 				mBoxRig->DrawAlphaCutOnly(
@@ -313,6 +326,8 @@ void TutorialApp::RenderTransparentPass(
 		if (mTreeX.enabled)  DrawStaticTransparentOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
 		if (mCharX.enabled)  DrawStaticTransparentOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
 		if (mZeldaX.enabled) DrawStaticTransparentOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
+
+		if (mFemaleX.enabled) DrawStaticTransparentOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
 
 		if (mBoxRig && mBoxX.enabled) {
 			mBoxRig->DrawTransparentOnly(ctx, ComposeSRT(mBoxX),
@@ -434,6 +449,14 @@ void TutorialApp::BindStaticMeshPipeline(ID3D11DeviceContext* ctx) {
 	ctx->VSSetShader(m_pMeshVS, nullptr, 0);
 	ctx->PSSetShader(m_pMeshPS, nullptr, 0);
 	//=============================================
+}
+
+void TutorialApp::BindStaticMeshPipeline_PBR(ID3D11DeviceContext* ctx)
+{
+	ctx->IASetInputLayout(m_pMeshIL);
+	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ctx->VSSetShader(m_pMeshVS, nullptr, 0);        // VS는 기존 그대로 사용
+	ctx->PSSetShader(m_pPBRPS, nullptr, 0);         // PS만 PBR로 교체
 }
 
 void TutorialApp::BindSkinnedMeshPipeline(ID3D11DeviceContext* ctx) {
