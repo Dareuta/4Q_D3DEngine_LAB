@@ -345,7 +345,7 @@ private:
 		float alphaCut = 0.4f;
 
 		bool  useToon = false;
-		bool  toonHalfLambert = true;
+		bool  toonHalfLambert = false;
 		float toonSpecStep = 0.55f;
 		float toonSpecBoost = 1.0f;
 		float toonShadowMin = 0.02f;

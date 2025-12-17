@@ -96,30 +96,33 @@ float4 main(PS_INPUT input) : SV_Target
          
         float u = (litForRamp * (float) (w - 1) + 0.5f) / (float) w;
         
-        float3 ramp = txRamp.SampleLevel(samRampPointClamp, float2(u, 0.5f), 0).rgb;        
-        ramp = max(ramp, gToonShadowMin.xxx);
+        float3 ramp = txRamp.SampleLevel(samRampPointClamp, float2(u, 0.5f), 0).rgb;
+        //ramp = max(ramp, gToonShadowMin.xxx);
 
         diff = albedo * ramp; // 램프 기반 디퓨즈
 
     // 2) 스펙큘러: 단계화 (임계값 넘으면 켜짐)
         if (specOn)
         {
+            float shadowRaw = shadow; // 지금 shadow
+            float shadowSpec = (shadowRaw > 0.5f) ? 1.0f : 0.0f; // 그림자에선 스펙 OFF
+            
             float s = pow(saturate(dot(Nw, H)), shin);
             s = step(gToonSpecStep, s) * gToonSpecBoost;
-            spec = specMask * ks * s;
+            //spec = specMask * ks * s;
+            spec = specMask * ks * s * shadowSpec;
         }
         else
         {
             spec = 0.0.xxx; // 안씀
         }
     }
-    else
-    {
-        // 기존 블린-폰
-        NdotL = saturate(NdotL);
-        diff = albedo * NdotL;
-        spec = specOn ? (specMask * ks * pow(saturate(dot(Nw, H)), shin)) : 0.0.xxx;
-    }
+else
+{
+    NdotL = saturate(NdotL);
+    diff = albedo * NdotL * shadow;
+    spec = specOn ? (specMask * ks * pow(saturate(dot(Nw, H)), shin) * shadow) : 0.0.xxx;
+}
     
     
 //     float  NdotL = saturate(dot(Nw, L));
