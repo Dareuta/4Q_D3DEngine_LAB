@@ -185,7 +185,7 @@ bool TutorialApp::InitScene()
 	mZeldaX.pos = { 0, -150, 250 };  mZeldaX.initPos = mZeldaX.pos;
 	mBoxX.pos = { -200, -150, 400 }; mBoxX.scl = { 0.2f,0.2f,0.2f };
 	mSkinX.pos = { 200, -150, 400 };
-	mFemaleX.pos = { 0, -180, 400 };
+	mFemaleX.pos = { 0, -180, 200 };
 
 	mTreeX.enabled = mCharX.enabled = mZeldaX.enabled = mBoxX.enabled = mSkinX.enabled = false;
 

@@ -505,6 +505,21 @@ void TutorialApp::DrawStaticOpaqueOnly(
 		use.useOpacity = 0u;
 		use.alphaCut = mDbg.forceAlphaClip ? mDbg.alphaCut : -1.0f;
 
+		// [Blinn-Phong fallback] PBR 패킹 재질(metal/rough를 spec/emissive 슬롯에 넣어둔 케이스) 보호
+		const bool blinnPhongMode = !mPbr.enable;
+		
+		const bool isPbrPackedAsset = (&mtls == &gFemaleMtls);
+
+		if (blinnPhongMode && isPbrPackedAsset)
+		{
+			// roughness 텍스처가 emissive 슬롯에 들어있으면, Blinn-Phong에선 빨갛게 타니까 무시
+			use.useEmissive = 0;
+
+			// metallic 텍스처가 specular 슬롯에 들어있으면, Blinn-Phong에선 의미가 다르니 샘플링하지 말자
+			// disableSpecular 토글 존중
+			use.useSpecular = mDbg.disableSpecular ? 0u : 2u; // 2 = 상수 specMask(1.0) 사용
+		}
+
 		ctx->UpdateSubresource(m_pUseCB, 0, nullptr, &use, 0, 0);
 		ctx->PSSetConstantBuffers(2, 1, &m_pUseCB);
 
@@ -540,6 +555,14 @@ void TutorialApp::DrawStaticAlphaCutOnly(
 		use.useEmissive = (mat.hasEmissive && !mDbg.disableEmissive) ? 1u : 0u;
 		use.useOpacity = 1u;          // alpha-test
 		use.alphaCut = mDbg.alphaCut;
+
+		const bool blinnPhongMode = !mPbr.enable;
+		const bool isPbrPackedAsset = (&mtls == &gFemaleMtls);
+		if (blinnPhongMode && isPbrPackedAsset)
+		{
+			use.useEmissive = 0;
+			use.useSpecular = mDbg.disableSpecular ? 0u : 2u; 
+		}
 
 		ctx->UpdateSubresource(m_pUseCB, 0, nullptr, &use, 0, 0);
 		ctx->PSSetConstantBuffers(2, 1, &m_pUseCB);
@@ -578,6 +601,14 @@ void TutorialApp::DrawStaticTransparentOnly(
 		use.useEmissive = (mat.hasEmissive && !mDbg.disableEmissive) ? 1u : 0u;
 		use.useOpacity = 1u;           // 투명 블렌드
 		use.alphaCut = mDbg.forceAlphaClip ? mDbg.alphaCut : -1.0f;
+			
+		const bool blinnPhongMode = !mPbr.enable;
+		const bool isPbrPackedAsset = (&mtls == &gFemaleMtls);
+		if (blinnPhongMode && isPbrPackedAsset)
+		{
+			use.useEmissive = 0;		
+			use.useSpecular = mDbg.disableSpecular ? 0u : 2u; 
+		}
 
 		ctx->UpdateSubresource(m_pUseCB, 0, nullptr, &use, 0, 0);
 		ctx->PSSetConstantBuffers(2, 1, &m_pUseCB);

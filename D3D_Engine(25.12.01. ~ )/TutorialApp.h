@@ -243,8 +243,8 @@ private:
 	Matrix                                           mLightProj = Matrix::Identity;
 
 	// 섀도우 설정값
-	UINT  mShadowW = 2048;
-	UINT  mShadowH = 2048;
+	UINT  mShadowW = 4096;
+	UINT  mShadowH = 4096;
 	float mShadowCmpBias = 0.0015f; // 비교 바이어스(PS)
 	float mShadowFovY = DirectX::XMConvertToRadians(60.0f);
 	float mShadowNear = 0.01f;
