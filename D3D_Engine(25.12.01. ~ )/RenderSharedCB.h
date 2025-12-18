@@ -95,5 +95,9 @@ struct CB_PBRParams
 
 	DirectX::XMFLOAT4 baseColorOverride; // rgb
 	DirectX::XMFLOAT4 m_r_n_flags;       // x=metallic, y=roughness, z=normalStrength, w=flipNormalY(0/1)
+
+	DirectX::XMFLOAT4 envDiff; // rgb=color, w=intensity
+	DirectX::XMFLOAT4 envSpec; // rgb=color, w=intensity
+
 };
 static_assert((sizeof(CB_PBRParams) % 16) == 0);

@@ -1,25 +1,24 @@
 #include "Shared.hlsli"
 
-#ifndef NORMALMAP_FLIP_GREEN
-#define NORMALMAP_FLIP_GREEN 0
-#endif
-
 #ifndef SWAPCHAIN_SRGB
 #define SWAPCHAIN_SRGB 1
 #endif
 
 // ------------------------------------------------------------
-// b8: PBR 토글/강제값 (과제 요구사항용)
+// b8: PBR 토글/강제값
 // ------------------------------------------------------------
 cbuffer PBRParams : register(b8)
 {
-    uint pUseBaseColorTex; // 1: 텍스처, 0: 강제값
-    uint pUseNormalTex; // 1: 텍스처, 0: 버텍스 노말
-    uint pUseMetallicTex; // 1: 텍스처, 0: 강제값
-    uint pUseRoughnessTex; // 1: 텍스처, 0: 강제값
+    uint pUseBaseColorTex;
+    uint pUseNormalTex;
+    uint pUseMetallicTex;
+    uint pUseRoughnessTex;
 
-    float4 pBaseColor; // 강제 baseColor (rgb)
-    float4 pParams; // x=metallic, y=roughness, z=normalStrength(0~2), w=unused
+    float4 pBaseColor; // rgb
+    float4 pParams; // x=metallic, y=roughness, z=normalStrength, w=flipNormalY(0/1)
+
+    float4 pEnvDiff; // rgb=color, w=intensity
+    float4 pEnvSpec; // rgb=color, w=intensity
 }
 
 // ------------------------------------------------------------
@@ -81,18 +80,18 @@ float4 main(PS_INPUT input) : SV_Target
     // ----- 월드 벡터 -----
     float3 Nw_base = normalize(input.NormalW);
     float3 Tw = OrthonormalizeTangent(Nw_base, input.TangentW.xyz);
+       
+    float normalStrength = clamp(pParams.z, 0.0f, 2.0f);
 
-    float normalStrength = saturate(pParams.z); // 0~1로 쓰고 싶으면 saturate, 2까지 허용하려면 clamp
-    // (원하면 0~2까지 허용)
-    normalStrength = clamp(pParams.z, 0.0f, 2.0f);
 
     float3 Nw = Nw_base;
     if (pUseNormalTex != 0 && useNormal != 0)
     {
-        float3 nTex = ApplyNormalMapTS(Nw_base, Tw, input.TangentW.w, input.Tex, NORMALMAP_FLIP_GREEN);
+        int flipGreen = (pParams.w > 0.5f) ? 1 : 0; // 0/1
+        float3 nTex = ApplyNormalMapTS(Nw_base, Tw, input.TangentW.w, input.Tex, flipGreen);
         Nw = normalize(lerp(Nw_base, nTex, normalStrength));
     }
-
+    
     float3 L = normalize(-vLightDir.xyz);
     float3 V = normalize(EyePosW.xyz - input.WorldPos);
     float3 H = normalize(L + V);
@@ -148,15 +147,29 @@ float4 main(PS_INPUT input) : SV_Target
     float3 kS = F;
     float3 kD = (1.0f - kS) * (1.0f - metallic);
     float3 diff = kD * baseColor / PI;
-
+        
     float shadow = SampleShadow_PCF(input.WorldPos, Nw);
     float3 direct = (diff + spec) * vLightColor.rgb * NdotL * shadow;
+    
+    float3 envDiff = pEnvDiff.rgb * pEnvDiff.w;
+    float3 envSpec = pEnvSpec.rgb * pEnvSpec.w;
 
-    // 기존 엔진의 ambient 규칙 유지
-    float3 ambient = I_ambient.rgb * kA.rgb * baseColor;
+    float ao = 1.0f; // 나중에 AO 텍스처 붙이면 여기만 바꾸면 됨
+        
+    float3 F_amb = F0 + (1.0f - F0) * pow(1.0f - NdotV, 5.0f); // NdotV 기반
+    float3 kS_amb = F_amb;
+    float3 kD_amb = (1.0f - kS_amb) * (1.0f - metallic);
 
+    float3 ambientDiff = envDiff * (kD_amb * baseColor / PI) * ao;
+ 
+    float specScale = (1.0f - roughness);
+    specScale *= specScale;
+
+    float3 ambientSpec = envSpec * F_amb * specScale * ao;
+
+    float3 ambient = ambientDiff + ambientSpec;
     float3 color = ambient + direct;
-
+    
 #if SWAPCHAIN_SRGB
     return float4(color, a);
 #else
