@@ -50,6 +50,10 @@ Texture2D txEmissive : register(t3);
 Texture2D txOpacity : register(t4);
 SamplerState samLinear : register(s0);
 
+// IBL에서 쓰는거
+TextureCube txEnv : register(t7);
+SamplerState samClampLinear : register(s3);
+
 //--------툰 쉐이딩--------
 // === Toon Shading additions ===
 Texture2D txRamp : register(t6); // 1D처럼 쓰는 램프 텍스처(가로 0..1)
@@ -163,6 +167,7 @@ float SampleShadow_PCF(float3 worldPos, float3 Nw)
         }
     return acc / 9.0f;
 }
+
 // ===== Bones (b4) — Shared에만 둔다!
 static const uint kMaxBones = 256;
 #if defined(SKINNED)

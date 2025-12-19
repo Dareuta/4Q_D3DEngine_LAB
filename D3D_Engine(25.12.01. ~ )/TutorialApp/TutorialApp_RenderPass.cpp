@@ -487,6 +487,9 @@ void TutorialApp::BindStaticMeshPipeline_PBR(ID3D11DeviceContext* ctx)
 	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ctx->VSSetShader(m_pMeshVS, nullptr, 0);        // VS는 기존 그대로 사용
 	ctx->PSSetShader(m_pPBRPS, nullptr, 0);         // PS만 PBR로 교체
+
+	if (m_pSkySRV)     ctx->PSSetShaderResources(7, 1, &m_pSkySRV);
+	if (m_pSkySampler) ctx->PSSetSamplers(3, 1, &m_pSkySampler);
 }
 
 void TutorialApp::BindSkinnedMeshPipeline(ID3D11DeviceContext* ctx) {

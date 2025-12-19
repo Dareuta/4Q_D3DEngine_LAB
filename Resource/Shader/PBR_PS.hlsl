@@ -28,7 +28,7 @@ static const float PI = 3.14159265f;
 
 float D_GGX(float NdotH, float a)
 {
-    float a2 = a * a;
+    float a2 = a * a;    
     float d = (NdotH * NdotH) * (a2 - 1.0f) + 1.0f;
     return a2 / (PI * d * d + 1e-7f);
 }
@@ -138,7 +138,8 @@ float4 main(PS_INPUT input) : SV_Target
     // ----- PBR (Cook-Torrance) -----
     float3 F0 = lerp(float3(0.04f, 0.04f, 0.04f), baseColor, metallic);
 
-    float D = D_GGX(NdotH, aRough);
+    //float D = D_GGX(NdotH, aRough);
+    float D = D_GGX(NdotH, roughness);
     float G = G_Smith(NdotV, NdotL, roughness);
     float3 F = F_Schlick(F0, VdotH);
 
@@ -151,27 +152,62 @@ float4 main(PS_INPUT input) : SV_Target
     float shadow = SampleShadow_PCF(input.WorldPos, Nw);
     float3 direct = (diff + spec) * vLightColor.rgb * NdotL * shadow;
     
-    float3 envDiff = pEnvDiff.rgb * pEnvDiff.w;
-    float3 envSpec = pEnvSpec.rgb * pEnvSpec.w;
+    //float3 envDiff = pEnvDiff.rgb * pEnvDiff.w;
+    //float3 envSpec = pEnvSpec.rgb * pEnvSpec.w;
 
     float ao = 1.0f; // 나중에 AO 텍스처 붙이면 여기만 바꾸면 됨
         
-    float3 F_amb = F0 + (1.0f - F0) * pow(1.0f - NdotV, 5.0f); // NdotV 기반
+
+    
+    
+    const float MAX_ENV_LOD = 7.0f; // 스카이박스 DDS에 mip이 있을 때만 의미 있음
+
+    float3 R = reflect(-V, Nw);
+
+// diffuse: 노멀 방향으로 샘플 (정석은 irradiance map이지만, 일단 이렇게)
+    //float3 iblDiff = txEnv.SampleLevel(samClampLinear, Nw, MAX_ENV_LOD).rgb; // 아주 거친 mip로 “대충” 확산광
+    //iblDiff *= (pEnvDiff.rgb * pEnvDiff.w);
+    
+
+    
+    float3 iblDiff = txEnv.Sample(samClampLinear, Nw).rgb;
+    float3 iblSpec = txEnv.Sample(samClampLinear, R).rgb;
+
+    float diffK = max(pEnvDiff.w, 0.0f);
+    float specK = max(pEnvSpec.w, 0.0f);
+
+    iblDiff *= pEnvDiff.rgb * diffK;
+    iblSpec *= pEnvSpec.rgb * specK;
+    
+// spec: 반사벡터 + roughness로 mip 선택
+    float lod = roughness * MAX_ENV_LOD;
+    //float3 iblSpec = txEnv.SampleLevel(samClampLinear, R, lod).rgb;
+    //iblSpec *= (pEnvSpec.rgb * pEnvSpec.w);
+
+// 기존처럼 kD/kS 섞기
+    float3 F_amb = F0 + (1.0f - F0) * pow(1.0f - NdotV, 5.0f);
     float3 kS_amb = F_amb;
     float3 kD_amb = (1.0f - kS_amb) * (1.0f - metallic);
 
-    float3 ambientDiff = envDiff * (kD_amb * baseColor / PI) * ao;
- 
-    float specScale = (1.0f - roughness);
-    specScale *= specScale;
+    //float3 ambient = (kD_amb * baseColor) * iblDiff * ao + (iblSpec * F_amb) * ao;
+    
+    float3 ambient = (kD_amb * baseColor / PI) * iblDiff * ao + (iblSpec * F_amb) * ao;
 
-    float3 ambientSpec = envSpec * F_amb * specScale * ao;
-
-    float3 ambient = ambientDiff + ambientSpec;
+    
+    //float3 ambient = ambientDiff + ambientSpec;
+    
     float3 color = ambient + direct;
     
 #if SWAPCHAIN_SRGB
     return float4(color, a);
+    
+    
+    //return float4(txEnv.SampleLevel(samClampLinear, float3(0, 1, 0), 0).rgb, 1);
+    
+    //color = iblSpec; // 테스트용
+    //return float4(color, 1);    
+    
+    //return float4(1, 0, 1, 1); // 마젠타
 #else
     float3 color_srgb = pow(saturate(color), 1.0 / 2.2);
     return float4(color_srgb, a);

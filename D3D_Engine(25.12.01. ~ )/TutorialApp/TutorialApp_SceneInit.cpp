@@ -301,7 +301,18 @@ bool TutorialApp::InitScene()
 		HR_T(m_pDevice->CreateBuffer(&ib, &isd, &m_pSkyIB));
 
 		// texture + sampler
+		//Hanako << 디버그용 큐브맵 이름
 		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Cubemap.dds", nullptr, &m_pSkySRV));
+
+		if (!m_pSkySRV) {
+			printf("SkySRV is NULL (load failed)\n"); // 검증용, 나중에 지워도 됨
+		}
+		else {
+			D3D11_SHADER_RESOURCE_VIEW_DESC sd{};			m_pSkySRV->GetDesc(&sd);
+			UINT mips = 0;			if (sd.ViewDimension == D3D11_SRV_DIMENSION_TEXTURECUBE) mips = sd.TextureCube.MipLevels;
+			printf("SkySRV ViewDimension=%d, Mips=%u\n", sd.ViewDimension, mips);
+		}
+
 		D3D11_SAMPLER_DESC ssd{}; ssd.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 		ssd.AddressU = ssd.AddressV = ssd.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
 		ssd.MaxLOD = D3D11_FLOAT32_MAX;
@@ -312,6 +323,7 @@ bool TutorialApp::InitScene()
 		sd.DepthFunc = D3D11_COMPARISON_LESS_EQUAL; HR_T(m_pDevice->CreateDepthStencilState(&sd, &m_pSkyDSS));
 		D3D11_RASTERIZER_DESC rs{}; rs.FillMode = D3D11_FILL_SOLID; rs.CullMode = D3D11_CULL_FRONT;
 		HR_T(m_pDevice->CreateRasterizerState(&rs, &m_pSkyRS));
+
 	}
 
 	// =========================================================

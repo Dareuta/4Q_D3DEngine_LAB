@@ -195,6 +195,17 @@ void TutorialApp::OnRender()
 		ctx->PSSetShaderResources(5, 1, &shSRV);
 	}
 
+	//if (m_pSkySRV)
+	//{
+	//	ID3D11ShaderResourceView* env = m_pSkySRV;
+	//	ctx->PSSetShaderResources(7, 1, &env);
+	//}
+	//if (m_pSkySampler)
+	//{
+	//	ID3D11SamplerState* samp = m_pSkySampler;
+	//	ctx->PSSetSamplers(3, 1, &samp);
+	//}
+
 	// === Toon ramp bind (PS: t6/b7) ===
 	{
 		//툰 셰이딩 바인드
