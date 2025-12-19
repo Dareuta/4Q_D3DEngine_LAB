@@ -26,9 +26,9 @@ cbuffer PBRParams : register(b8)
 // ------------------------------------------------------------
 static const float PI = 3.14159265f;
 
-float D_GGX(float NdotH, float a)
+float D_GGX(float NdotH, float a) // a = alpha(=roughness^2)
 {
-    float a2 = a * a;    
+    float a2 = a * a;
     float d = (NdotH * NdotH) * (a2 - 1.0f) + 1.0f;
     return a2 / (PI * d * d + 1e-7f);
 }
@@ -40,7 +40,6 @@ float G_SchlickGGX(float NdotX, float k)
 
 float G_Smith(float NdotV, float NdotL, float roughness)
 {
-    // UE4 스타일 k
     float r = roughness + 1.0f;
     float k = (r * r) / 8.0f;
     return G_SchlickGGX(NdotV, k) * G_SchlickGGX(NdotL, k);
@@ -53,17 +52,40 @@ float3 F_Schlick(float3 F0, float VdotH)
 }
 
 // ------------------------------------------------------------
+// IBL Sampling (MDR decode 적용)
+// ------------------------------------------------------------
+
+// Pref mips=10이면 0~9 사용
+static const float IBL_MAX_MIP = 9.0f;
+
+// MDR 인코딩 스케일(조명용): 여기로 “보기 좋게” 조절하지 말고
+// pEnvDiff.w / pEnvSpec.w로 조절하는 게 깔끔함.
+static const float IBL_MDR_SCALE = 1.0f;
+
+float3 SampleIrradiance_IBL(float3 N)
+{
+    float4 s = txIrr.Sample(samClampLinear, N);
+    return DecodeEnvMDR(s, IBL_MDR_SCALE); // ★ Shared.hlsli에 있는 디코더 사용
+}
+
+float3 SamplePrefilter_IBL(float3 R, float roughness)
+{
+    float lod = roughness * IBL_MAX_MIP;
+    float4 s = txPref.SampleLevel(samClampLinear, R, lod);
+    return DecodeEnvMDR(s, IBL_MDR_SCALE);
+}
+
+// ------------------------------------------------------------
 // main
 // ------------------------------------------------------------
 float4 main(PS_INPUT input) : SV_Target
 {
-    // ----- 알파(기존 규칙 유지) -----
+    // ----- Alpha 규칙 -----
     float a = 1.0f;
     if (useOpacity != 0)
     {
         a = txOpacity.Sample(samLinear, input.Tex).a;
 
-        // alphaCut >= 0 이면 컷아웃으로 처리 (통과 픽셀은 불투명 취급)
         if (alphaCut >= 0.0f)
         {
             clip(a - alphaCut);
@@ -71,27 +93,25 @@ float4 main(PS_INPUT input) : SV_Target
         }
         else
         {
-            // 투명 패스라면 a 그대로 사용
             if (a <= 1e-3f)
                 clip(-1);
         }
     }
 
-    // ----- 월드 벡터 -----
+    // ----- World vectors -----
     float3 Nw_base = normalize(input.NormalW);
     float3 Tw = OrthonormalizeTangent(Nw_base, input.TangentW.xyz);
-       
-    float normalStrength = clamp(pParams.z, 0.0f, 2.0f);
 
+    float normalStrength = clamp(pParams.z, 0.0f, 2.0f);
 
     float3 Nw = Nw_base;
     if (pUseNormalTex != 0 && useNormal != 0)
     {
-        int flipGreen = (pParams.w > 0.5f) ? 1 : 0; // 0/1
+        int flipGreen = (pParams.w > 0.5f) ? 1 : 0;
         float3 nTex = ApplyNormalMapTS(Nw_base, Tw, input.TangentW.w, input.Tex, flipGreen);
         Nw = normalize(lerp(Nw_base, nTex, normalStrength));
     }
-    
+
     float3 L = normalize(-vLightDir.xyz);
     float3 V = normalize(EyePosW.xyz - input.WorldPos);
     float3 H = normalize(L + V);
@@ -110,13 +130,11 @@ float4 main(PS_INPUT input) : SV_Target
         if (useDiffuse != 0)
         {
             float3 texCol = txDiffuse.Sample(samLinear, input.Tex).rgb;
-            // 기존 정책 유지: 텍스처 * 머티리얼 컬러(또는 1)
             float3 mulCol = (matUseBaseColor != 0) ? baseColFromMat : float3(1, 1, 1);
             baseColor = texCol * mulCol;
         }
         else
         {
-            // 텍스처가 없으면 머티리얼 컬러 사용
             baseColor = baseColFromMat;
         }
     }
@@ -132,14 +150,15 @@ float4 main(PS_INPUT input) : SV_Target
         roughness = txEmissive.Sample(samLinear, input.Tex).r;
 
     metallic = saturate(metallic);
-    roughness = clamp(roughness, 0.04f, 1.0f); // 0에 너무 붙으면 스파이크 심해짐
+    roughness = clamp(roughness, 0.04f, 1.0f);
+
+    // alpha(거칠기) = roughness^2 (정석)
     float aRough = roughness * roughness;
 
-    // ----- PBR (Cook-Torrance) -----
+    // ----- Cook-Torrance -----
     float3 F0 = lerp(float3(0.04f, 0.04f, 0.04f), baseColor, metallic);
 
-    //float D = D_GGX(NdotH, aRough);
-    float D = D_GGX(NdotH, roughness);
+    float D = D_GGX(NdotH, aRough);
     float G = G_Smith(NdotV, NdotL, roughness);
     float3 F = F_Schlick(F0, VdotH);
 
@@ -148,53 +167,39 @@ float4 main(PS_INPUT input) : SV_Target
     float3 kS = F;
     float3 kD = (1.0f - kS) * (1.0f - metallic);
     float3 diff = kD * baseColor / PI;
-        
+
     float shadow = SampleShadow_PCF(input.WorldPos, Nw);
     float3 direct = (diff + spec) * vLightColor.rgb * NdotL * shadow;
-    
-    //float3 envDiff = pEnvDiff.rgb * pEnvDiff.w;
-    //float3 envSpec = pEnvSpec.rgb * pEnvSpec.w;
 
-    float ao = 1.0f; // 나중에 AO 텍스처 붙이면 여기만 바꾸면 됨
-        
+    float ao = 1.0f;
 
-    
-    
-    const float MAX_ENV_LOD = 7.0f; // 스카이박스 DDS에 mip이 있을 때만 의미 있음
-
+    // ----- IBL (Split-Sum) -----
     float3 R = reflect(-V, Nw);
 
-// diffuse IBL
-    float3 irradiance = txIrr.Sample(samClampLinear, Nw).rgb;
+    // ★ MDR 디코드된 irradiance/prefilter
+    float3 irradiance = SampleIrradiance_IBL(Nw);
+    float3 prefiltered = SamplePrefilter_IBL(R, roughness);
 
-// spec IBL (mip 사용)
-    const float MAX_MIP = 7.0f; // 일단 고정(나중에 mip 수로 맞추면 더 좋음)
-    float3 prefiltered = txPref.SampleLevel(samClampLinear, R, roughness * MAX_MIP).rgb;
-
-// BRDF LUT
+    // ★ BRDF LUT는 그대로 (디코드 금지)
     float2 brdf = txBRDF.Sample(samClampLinear, float2(NdotV, roughness)).rg;
 
-// split-sum
+    // Ambient Fresnel (NdotV 기반)
     float3 F_amb = F0 + (1.0f - F0) * pow(1.0f - NdotV, 5.0f);
     float3 kD_amb = (1.0f - F_amb) * (1.0f - metallic);
 
     float3 diffIBL = irradiance * baseColor / PI;
     float3 specIBL = prefiltered * (F0 * brdf.x + brdf.y);
 
+    // 강도/색 조절은 여기서
+    diffIBL *= (pEnvDiff.rgb * pEnvDiff.w);
+    specIBL *= (pEnvSpec.rgb * pEnvSpec.w);
+
     float3 ambient = (kD_amb * diffIBL + specIBL) * ao;
-        
+
     float3 color = ambient + direct;
-    
+
 #if SWAPCHAIN_SRGB
     return float4(color, a);
-    
-    
-    //return float4(txEnv.SampleLevel(samClampLinear, float3(0, 1, 0), 0).rgb, 1);
-    
-    //color = iblSpec; // 테스트용
-    //return float4(color, 1);    
-    
-    //return float4(1, 0, 1, 1); // 마젠타
 #else
     float3 color_srgb = pow(saturate(color), 1.0 / 2.2);
     return float4(color_srgb, a);
