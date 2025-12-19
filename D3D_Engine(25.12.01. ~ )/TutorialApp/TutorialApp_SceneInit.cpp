@@ -1,7 +1,7 @@
 ﻿// InitScene / UninitScene + 섀도우 리소스/상태 생성
 
+#include "../../D3D_Core/pch.h"
 #include "TutorialApp.h"
-#include "../D3D_Core/pch.h"
 
 
 

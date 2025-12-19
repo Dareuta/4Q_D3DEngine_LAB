@@ -1,7 +1,7 @@
 ﻿// InitImGUI / UninitImGUI / UpdateImGUI / AnimUI
 
+#include "../../D3D_Core/pch.h"
 #include "TutorialApp.h"
-#include "../D3D_Core/pch.h"
 
 
 bool TutorialApp::InitImGUI()

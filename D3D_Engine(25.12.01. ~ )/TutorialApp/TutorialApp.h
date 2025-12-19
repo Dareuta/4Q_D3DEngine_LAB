@@ -13,25 +13,22 @@
 #include <windows.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
-
-#include "RenderSharedCB.h" 
-
 #include <directxtk/SimpleMath.h>
 #include <DirectXTK/DDSTextureLoader.h>   // CreateDDSTextureFromFile
 #include <DirectXTK/WICTextureLoader.h>
-
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
 
-#include "../D3D_Core/GameApp.h"
-#include "../D3D_Core/Helper.h"
+#include "../../D3D_Core/GameApp.h"
+#include "../../D3D_Core/Helper.h"
 
-#include "StaticMesh.h"
-#include "Material.h"
-#include "RigidSkeletal.h"
-#include "SkinnedSkeletal.h"
-#include "AssimpImporterEx.h"
+#include "../RenderSharedCB.h" 
+#include "../StaticMesh.h"
+#include "../Material.h"
+#include "../RigidSkeletal.h"
+#include "../SkinnedSkeletal.h"
+#include "../AssimpImporterEx.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")

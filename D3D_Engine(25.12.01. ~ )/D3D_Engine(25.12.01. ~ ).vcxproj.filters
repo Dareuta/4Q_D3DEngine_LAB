@@ -35,32 +35,29 @@
     <ClCompile Include="StaticMesh.cpp">
       <Filter>WorkSpace\#etc.</Filter>
     </ClCompile>
-    <ClCompile Include="TutorialApp_SceneInit.cpp">
-      <Filter>WorkSpace\#App</Filter>
-    </ClCompile>
-    <ClCompile Include="TutorialApp_D3DInit.cpp">
-      <Filter>WorkSpace\#App</Filter>
-    </ClCompile>
-    <ClCompile Include="TutorialApp_ImGui.cpp">
-      <Filter>WorkSpace\#App</Filter>
-    </ClCompile>
-    <ClCompile Include="TutorialApp_Lifecycle.cpp">
-      <Filter>WorkSpace\#App</Filter>
-    </ClCompile>
-    <ClCompile Include="TutorialApp_RenderPass.cpp">
-      <Filter>WorkSpace\#App</Filter>
-    </ClCompile>
     <ClCompile Include="WinMain.cpp">
       <Filter>WorkSpace\#App</Filter>
     </ClCompile>
     <ClCompile Include="Material.cpp">
       <Filter>WorkSpace\#etc.</Filter>
     </ClCompile>
+    <ClCompile Include="TutorialApp\TutorialApp_D3DInit.cpp">
+      <Filter>WorkSpace\#App</Filter>
+    </ClCompile>
+    <ClCompile Include="TutorialApp\TutorialApp_ImGui.cpp">
+      <Filter>WorkSpace\#App</Filter>
+    </ClCompile>
+    <ClCompile Include="TutorialApp\TutorialApp_Lifecycle.cpp">
+      <Filter>WorkSpace\#App</Filter>
+    </ClCompile>
+    <ClCompile Include="TutorialApp\TutorialApp_RenderPass.cpp">
+      <Filter>WorkSpace\#App</Filter>
+    </ClCompile>
+    <ClCompile Include="TutorialApp\TutorialApp_SceneInit.cpp">
+      <Filter>WorkSpace\#App</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="TutorialApp.h">
-      <Filter>WorkSpace\#App</Filter>
-    </ClInclude>
     <ClInclude Include="AssimpImporterEX.h">
       <Filter>WorkSpace\#etc.</Filter>
     </ClInclude>
@@ -84,6 +81,9 @@
     </ClInclude>
     <ClInclude Include="MeshDataEx.h">
       <Filter>WorkSpace\#HeaderOnly</Filter>
+    </ClInclude>
+    <ClInclude Include="TutorialApp\TutorialApp.h">
+      <Filter>WorkSpace\#App</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
