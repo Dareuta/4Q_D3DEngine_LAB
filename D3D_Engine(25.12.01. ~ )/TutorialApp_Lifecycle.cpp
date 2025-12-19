@@ -163,6 +163,10 @@ void TutorialApp::OnRender()
 	pbr.baseColorOverride = { mPbr.baseColor.x, mPbr.baseColor.y, mPbr.baseColor.z, 1.0f };
 	pbr.m_r_n_flags = { mPbr.metallic, mPbr.roughness, mPbr.normalStrength, mPbr.flipNormalY ? 1.0f : 0.0f };
 
+	pbr.envDiff = XMFLOAT4(mPbr.envDiffColor.x, mPbr.envDiffColor.y, mPbr.envDiffColor.z, mPbr.envDiffIntensity);
+	pbr.envSpec = XMFLOAT4(mPbr.envSpecColor.x, mPbr.envSpecColor.y, mPbr.envSpecColor.z, mPbr.envSpecIntensity);
+
+
 	ctx->UpdateSubresource(m_pPBRParamsCB, 0, nullptr, &pbr, 0, 0);
 	ctx->PSSetConstantBuffers(8, 1, &m_pPBRParamsCB); // b8
 

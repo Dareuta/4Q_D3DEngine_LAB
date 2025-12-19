@@ -441,12 +441,18 @@ private:
 		bool useMetalTex = true;
 		bool useRoughTex = true;
 
-		bool flipNormalY = false; // 노말맵 녹색 채널 뒤집기용(에셋에 따라 필요할 때가 있음)
+		bool flipNormalY = true; // 노말맵 녹색 채널 뒤집기용(에셋에 따라 필요할 때가 있음)
 		float normalStrength = 1.0f;
 
 		DirectX::SimpleMath::Vector3 baseColor = { 1,1,1 };
 		float metallic = 0.0f;
 		float roughness = 0.5f;       // 0에 가까울수록 거울
+
+		Vector3 envDiffColor = { 1, 1, 1 };
+		float   envDiffIntensity = 0.03f;   // 기본값 낮게(중요)
+
+		Vector3 envSpecColor = { 1, 1, 1 };
+		float   envSpecIntensity = 0.02f;   // 기본값 낮게
 	} mPbr;
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> mCB_Proc;
