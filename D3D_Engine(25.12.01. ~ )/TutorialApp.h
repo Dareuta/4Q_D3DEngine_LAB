@@ -449,4 +449,6 @@ private:
 		float roughness = 0.5f;       // 0에 가까울수록 거울
 	} mPbr;
 
+	Microsoft::WRL::ComPtr<ID3D11Buffer> mCB_Proc;
+	float mTimeSec = 0.0f; // 누적 시간(초)
 };

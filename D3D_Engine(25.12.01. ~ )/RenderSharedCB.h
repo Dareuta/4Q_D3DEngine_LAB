@@ -97,3 +97,11 @@ struct CB_PBRParams
 	DirectX::XMFLOAT4 m_r_n_flags;       // x=metallic, y=roughness, z=normalStrength, w=flipNormalY(0/1)
 };
 static_assert((sizeof(CB_PBRParams) % 16) == 0);
+
+
+struct CB_Proc
+{
+	DirectX::XMFLOAT4 uProc1; // x=timeSec, y=cellScale, z=warp1, w=warp2
+	DirectX::XMFLOAT4 uProc2; // x=scrollX, y=scrollY, z=gridMix, w=unused
+};
+static_assert((sizeof(CB_Proc) % 16) == 0);

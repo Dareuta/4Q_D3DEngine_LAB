@@ -424,6 +424,23 @@ void TutorialApp::RenderDebugPass(
 	}
 
 	if (mDbg.showGrid) {
+		
+		//물결
+		mTimeSec += GameTimer::m_Instance->DeltaTime();//dt; // dt = 프레임 델타(초)
+
+		CB_Proc cb{};
+		//cb.uProc1 = { mTimeSec, 1.2f, 0.8f, 0.35f };   // cellScale, warp1, warp2
+		//cb.uProc2 = { 0.02f, 0.03f, 0.2f, 0.0f };      // scroll speed, gridMix
+		cb.uProc1 = { mTimeSec, 18.0f, 0.5f, 0.0f }; // y=ringCount(링 개수), z=warpStrength
+		cb.uProc2 = { 0.0f, 0.0f, 0.2f, 250.0f };    // w=rippleRadiusWorld
+		cb.uProc2.w = 1000.0f; // 그리드가 대충 그 정도 크기라고 치고(월드 단위)
+
+		ctx->UpdateSubresource(mCB_Proc.Get(), 0, nullptr, &cb, 0, 0);
+
+		ID3D11Buffer* b = mCB_Proc.Get();
+		ctx->PSSetConstantBuffers(9, 1, &b);
+
+
 		float bf[4] = { 0,0,0,0 };
 		ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
 		ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0);
@@ -448,6 +465,9 @@ void TutorialApp::RenderDebugPass(
 		ctx->VSSetShader(mGridVS.Get(), nullptr, 0);
 		ctx->PSSetShader(mGridPS.Get(), nullptr, 0);
 		ctx->DrawIndexed(mGridIndexCount, 0, 0);
+
+		ID3D11Buffer* nullCB = nullptr;
+		ctx->PSSetConstantBuffers(9, 1, &nullCB);
 	}
 	//=============================================
 }
@@ -507,7 +527,7 @@ void TutorialApp::DrawStaticOpaqueOnly(
 
 		// [Blinn-Phong fallback] PBR 패킹 재질(metal/rough를 spec/emissive 슬롯에 넣어둔 케이스) 보호
 		const bool blinnPhongMode = !mPbr.enable;
-		
+
 		const bool isPbrPackedAsset = (&mtls == &gFemaleMtls);
 
 		if (blinnPhongMode && isPbrPackedAsset)
@@ -561,7 +581,7 @@ void TutorialApp::DrawStaticAlphaCutOnly(
 		if (blinnPhongMode && isPbrPackedAsset)
 		{
 			use.useEmissive = 0;
-			use.useSpecular = mDbg.disableSpecular ? 0u : 2u; 
+			use.useSpecular = mDbg.disableSpecular ? 0u : 2u;
 		}
 
 		ctx->UpdateSubresource(m_pUseCB, 0, nullptr, &use, 0, 0);
@@ -601,13 +621,13 @@ void TutorialApp::DrawStaticTransparentOnly(
 		use.useEmissive = (mat.hasEmissive && !mDbg.disableEmissive) ? 1u : 0u;
 		use.useOpacity = 1u;           // 투명 블렌드
 		use.alphaCut = mDbg.forceAlphaClip ? mDbg.alphaCut : -1.0f;
-			
+
 		const bool blinnPhongMode = !mPbr.enable;
 		const bool isPbrPackedAsset = (&mtls == &gFemaleMtls);
 		if (blinnPhongMode && isPbrPackedAsset)
 		{
-			use.useEmissive = 0;		
-			use.useSpecular = mDbg.disableSpecular ? 0u : 2u; 
+			use.useEmissive = 0;
+			use.useSpecular = mDbg.disableSpecular ? 0u : 2u;
 		}
 
 		ctx->UpdateSubresource(m_pUseCB, 0, nullptr, &use, 0, 0);

@@ -351,6 +351,16 @@ bool TutorialApp::InitScene()
 			m_pDevice, L"../Resource/Toon/RampTexture.png", nullptr, &m_pRampSRV));
 	}
 
+	{
+
+		D3D11_BUFFER_DESC bd{};
+		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(CB_Proc);
+
+		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, mCB_Proc.GetAddressOf()));
+	}
+
 	return true;
 }
 
