@@ -441,7 +441,7 @@ private:
 		bool useMetalTex = true;
 		bool useRoughTex = true;
 
-		bool flipNormalY = true; // 노말맵 녹색 채널 뒤집기용(에셋에 따라 필요할 때가 있음)
+		bool flipNormalY = false; // 노말맵 녹색 채널 뒤집기용
 		float normalStrength = 1.0f;
 
 		DirectX::SimpleMath::Vector3 baseColor = { 1,1,1 };
