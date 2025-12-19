@@ -180,10 +180,25 @@ private:
 	ID3D11InputLayout* m_pSkyIL = nullptr;
 	ID3D11Buffer* m_pSkyVB = nullptr;
 	ID3D11Buffer* m_pSkyIB = nullptr;
-	ID3D11ShaderResourceView* m_pSkySRV = nullptr;
-	ID3D11SamplerState* m_pSkySampler = nullptr;
+
+	//ID3D11ShaderResourceView* m_pSkySRV = nullptr;
+	//ID3D11SamplerState* m_pSkySampler = nullptr;
+
 	ID3D11DepthStencilState* m_pSkyDSS = nullptr; // Depth write ZERO + LEQUAL
 	ID3D11RasterizerState* m_pSkyRS = nullptr; // Cull FRONT (내부면 렌더)
+
+	// IBL 쓸려고 추가한거임 스카이박스 관련
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mSkyEnvMDRSRV;   // (옵션) 배경용 env
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mSkyEnvHDRSRV;   // (옵션) 배경용 env
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mIBLIrrMDRSRV;   // diffuse irradiance cube
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mIBLIrrHDRSRV;   // diffuse irradiance cube
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mIBLPrefMDRSRV;  // spec prefiltered cube (mips!)
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mIBLPrefHDRSRV;  // spec prefiltered cube (mips!)
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mIBLBrdfSRV;  // BRDF LUT (2D)
+	
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> mSamIBLClamp;       // PS s3
 
 	//==========================================================================================
 	// 메쉬 파이프라인 (정적)

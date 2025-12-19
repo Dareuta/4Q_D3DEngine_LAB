@@ -179,8 +179,11 @@ void TutorialApp::RenderSkyPass(
 		ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &skyCB, 0, 0);
 		ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
 
-		ctx->PSSetShaderResources(0, 1, &m_pSkySRV);
-		ctx->PSSetSamplers(0, 1, &m_pSkySampler);
+		ID3D11ShaderResourceView* sky = mSkyEnvMDRSRV.Get();
+		ctx->PSSetShaderResources(0, 1, &sky);
+
+		ID3D11SamplerState* s0 = mSamIBLClamp.Get();
+		ctx->PSSetSamplers(0, 1, &s0);
 
 		UINT stride = sizeof(DirectX::XMFLOAT3), offset = 0;
 		ctx->IASetVertexBuffers(0, 1, &m_pSkyVB, &stride, &offset);
@@ -424,7 +427,7 @@ void TutorialApp::RenderDebugPass(
 	}
 
 	if (mDbg.showGrid) {
-		
+
 		//물결
 		mTimeSec += GameTimer::m_Instance->DeltaTime();//dt; // dt = 프레임 델타(초)
 
@@ -485,12 +488,31 @@ void TutorialApp::BindStaticMeshPipeline_PBR(ID3D11DeviceContext* ctx)
 {
 	ctx->IASetInputLayout(m_pMeshIL);
 	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	ctx->VSSetShader(m_pMeshVS, nullptr, 0);        // VS는 기존 그대로 사용
-	ctx->PSSetShader(m_pPBRPS, nullptr, 0);         // PS만 PBR로 교체
+	ctx->VSSetShader(m_pMeshVS, nullptr, 0);
+	ctx->PSSetShader(m_pPBRPS, nullptr, 0);
 
-	if (m_pSkySRV)     ctx->PSSetShaderResources(7, 1, &m_pSkySRV);
-	if (m_pSkySampler) ctx->PSSetSamplers(3, 1, &m_pSkySampler);
+	ID3D11ShaderResourceView* ibl[3] =
+	{
+		mIBLIrrMDRSRV.Get(),   // t7 (cube)
+		mIBLPrefMDRSRV.Get(),  // t8 (cube, mips 많음)
+		mIBLBrdfSRV.Get()   // t9 (2D)
+	};
+
+
+	if (ibl[0] && ibl[1] && ibl[2])
+		ctx->PSSetShaderResources(7, 3, ibl);
+	else
+	{
+		ctx->PSSetShaderResources(7, 3, ibl); // 디버깅 중이면 걍 걸어두면 어디가 NULL인지 바로 티남]
+		std::cout << "뭔가 잘못대씀" << std::endl;
+	}
+
+
+	if (auto* s3 = mSamIBLClamp.Get())
+		ctx->PSSetSamplers(3, 1, &s3);
 }
+
+
 
 void TutorialApp::BindSkinnedMeshPipeline(ID3D11DeviceContext* ctx) {
 	//=============================================

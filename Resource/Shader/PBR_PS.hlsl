@@ -164,38 +164,25 @@ float4 main(PS_INPUT input) : SV_Target
 
     float3 R = reflect(-V, Nw);
 
-// diffuse: 노멀 방향으로 샘플 (정석은 irradiance map이지만, 일단 이렇게)
-    //float3 iblDiff = txEnv.SampleLevel(samClampLinear, Nw, MAX_ENV_LOD).rgb; // 아주 거친 mip로 “대충” 확산광
-    //iblDiff *= (pEnvDiff.rgb * pEnvDiff.w);
-    
+// diffuse IBL
+    float3 irradiance = txIrr.Sample(samClampLinear, Nw).rgb;
 
-    
-    float3 iblDiff = txEnv.Sample(samClampLinear, Nw).rgb;
-    float3 iblSpec = txEnv.Sample(samClampLinear, R).rgb;
+// spec IBL (mip 사용)
+    const float MAX_MIP = 7.0f; // 일단 고정(나중에 mip 수로 맞추면 더 좋음)
+    float3 prefiltered = txPref.SampleLevel(samClampLinear, R, roughness * MAX_MIP).rgb;
 
-    float diffK = max(pEnvDiff.w, 0.0f);
-    float specK = max(pEnvSpec.w, 0.0f);
+// BRDF LUT
+    float2 brdf = txBRDF.Sample(samClampLinear, float2(NdotV, roughness)).rg;
 
-    iblDiff *= pEnvDiff.rgb * diffK;
-    iblSpec *= pEnvSpec.rgb * specK;
-    
-// spec: 반사벡터 + roughness로 mip 선택
-    float lod = roughness * MAX_ENV_LOD;
-    //float3 iblSpec = txEnv.SampleLevel(samClampLinear, R, lod).rgb;
-    //iblSpec *= (pEnvSpec.rgb * pEnvSpec.w);
-
-// 기존처럼 kD/kS 섞기
+// split-sum
     float3 F_amb = F0 + (1.0f - F0) * pow(1.0f - NdotV, 5.0f);
-    float3 kS_amb = F_amb;
-    float3 kD_amb = (1.0f - kS_amb) * (1.0f - metallic);
+    float3 kD_amb = (1.0f - F_amb) * (1.0f - metallic);
 
-    //float3 ambient = (kD_amb * baseColor) * iblDiff * ao + (iblSpec * F_amb) * ao;
-    
-    float3 ambient = (kD_amb * baseColor / PI) * iblDiff * ao + (iblSpec * F_amb) * ao;
+    float3 diffIBL = irradiance * baseColor / PI;
+    float3 specIBL = prefiltered * (F0 * brdf.x + brdf.y);
 
-    
-    //float3 ambient = ambientDiff + ambientSpec;
-    
+    float3 ambient = (kD_amb * diffIBL + specIBL) * ao;
+        
     float3 color = ambient + direct;
     
 #if SWAPCHAIN_SRGB

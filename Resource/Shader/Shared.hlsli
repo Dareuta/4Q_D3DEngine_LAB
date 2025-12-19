@@ -51,7 +51,12 @@ Texture2D txOpacity : register(t4);
 SamplerState samLinear : register(s0);
 
 // IBL에서 쓰는거
-TextureCube txEnv : register(t7);
+//TextureCube txEnv : register(t7);
+//SamplerState samClampLinear : register(s3);
+
+TextureCube txIrr : register(t7);
+TextureCube txPref : register(t8);
+Texture2D txBRDF : register(t9);
 SamplerState samClampLinear : register(s3);
 
 //--------툰 쉐이딩--------

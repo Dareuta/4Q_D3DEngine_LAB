@@ -4,6 +4,20 @@
 #include "TutorialApp.h"
 
 
+static void LogSRV(const wchar_t* name, ID3D11ShaderResourceView* srv)
+{
+	if (!srv) { wprintf(L"%s: NULL\n", name); return; }
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC d{};
+	srv->GetDesc(&d);
+
+	UINT mips = 0;
+	if (d.ViewDimension == D3D11_SRV_DIMENSION_TEXTURECUBE)  mips = d.TextureCube.MipLevels;
+	if (d.ViewDimension == D3D11_SRV_DIMENSION_TEXTURE2D)    mips = d.Texture2D.MipLevels;
+
+	wprintf(L"%s: dim=%d mips=%u\n", name, d.ViewDimension, mips);
+} // 디버그용
+
 
 bool TutorialApp::InitScene()
 {
@@ -302,23 +316,89 @@ bool TutorialApp::InitScene()
 
 		// texture + sampler
 		//Hanako << 디버그용 큐브맵 이름
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Cubemap.dds", nullptr, &m_pSkySRV));
+		//HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/TestCubemap/Cubemap.dds", nullptr, &m_pSkySRV));
+		//HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/TestCubemap/Hanako.dds", nullptr, &m_pSkySRV));
 
-		if (!m_pSkySRV) {
-			printf("SkySRV is NULL (load failed)\n"); // 검증용, 나중에 지워도 됨
-		}
-		else {
-			D3D11_SHADER_RESOURCE_VIEW_DESC sd{};			m_pSkySRV->GetDesc(&sd);
-			UINT mips = 0;			if (sd.ViewDimension == D3D11_SRV_DIMENSION_TEXTURECUBE) mips = sd.TextureCube.MipLevels;
-			printf("SkySRV ViewDimension=%d, Mips=%u\n", sd.ViewDimension, mips);
+		// 1) 배경용 env (선택)
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorEnvHDR.dds", nullptr, &mSkyEnvHDRSRV));
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorEnvMDR.dds", nullptr, &mSkyEnvMDRSRV));
+
+		//HR_T(DirectX::CreateDDSTextureFromFileEx(
+		//	m_pDevice, m_pDeviceContext,
+		//	L"../Resource/SkyBox/Bridge/bridgeEnvMDR.dds",
+		//	0, D3D11_USAGE_DEFAULT,
+		//	D3D11_BIND_SHADER_RESOURCE,
+		//	0, D3D11_RESOURCE_MISC_TEXTURECUBE,
+		//	DirectX::DDS_LOADER_FORCE_SRGB, nullptr,
+		//	mSkyEnvMDRSRV.ReleaseAndGetAddressOf(), nullptr
+		//));
+
+
+		auto DumpFmt = [](const wchar_t* name, ID3D11ShaderResourceView* srv)
+			{
+				D3D11_SHADER_RESOURCE_VIEW_DESC d{}; srv->GetDesc(&d);
+				wprintf(L"%s: dim=%d fmt=%d\n", name, d.ViewDimension, d.Format);
+			};
+
+		DumpFmt(L"EnvHDR", mSkyEnvHDRSRV.Get());
+		DumpFmt(L"EnvMDR", mSkyEnvMDRSRV.Get());
+
+		// 2) diffuse irradiance
+
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorDiffuseHDR.dds", nullptr, &mIBLIrrHDRSRV));
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorDiffuseMDR.dds", nullptr, &mIBLIrrMDRSRV));
+
+		//HR_T(DirectX::CreateDDSTextureFromFileEx(
+		//	m_pDevice, m_pDeviceContext,
+		//	L"../Resource/SkyBox/Bridge/bridgeDiffuseMDR.dds",
+		//	0, D3D11_USAGE_DEFAULT,
+		//	D3D11_BIND_SHADER_RESOURCE,
+		//	0, D3D11_RESOURCE_MISC_TEXTURECUBE,
+		//	DirectX::DDS_LOADER_FORCE_SRGB, nullptr,
+		//	mIBLIrrMDRSRV.ReleaseAndGetAddressOf(), nullptr
+		//));
+
+
+		
+		// 3) spec prefilter (mip 많아야 roughness 퍼짐)
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorSpecularHDR.dds", nullptr, &mIBLPrefHDRSRV));
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorSpecularMDR.dds", nullptr, &mIBLPrefMDRSRV));
+		
+		
+		//HR_T(DirectX::CreateDDSTextureFromFileEx(
+		//	m_pDevice, m_pDeviceContext,
+		//	L"../Resource/SkyBox/Bridge/bridgeSpecularHDR.dds",
+		//	0, D3D11_USAGE_DEFAULT,
+		//	D3D11_BIND_SHADER_RESOURCE,
+		//	0, D3D11_RESOURCE_MISC_TEXTURECUBE,
+		//	DirectX::DDS_LOADER_FORCE_SRGB, nullptr,
+		//	mIBLPrefHDRSRV.ReleaseAndGetAddressOf(), nullptr
+		//));
+
+
+		{
+			D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
+			mIBLPrefMDRSRV->GetDesc(&desc);
+			printf("Prefilter SRV mips = %u\n",
+				(desc.ViewDimension == D3D11_SRV_DIMENSION_TEXTURECUBE) ? desc.TextureCube.MipLevels : 0);
 		}
 
-		D3D11_SAMPLER_DESC ssd{}; ssd.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-		ssd.AddressU = ssd.AddressV = ssd.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-		ssd.MaxLOD = D3D11_FLOAT32_MAX;
-		HR_T(m_pDevice->CreateSamplerState(&ssd, &m_pSkySampler));
+		// 4) BRDF LUT (2D)
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorBrdf.dds", nullptr, &mIBLBrdfSRV));
+
+		LogSRV(L"Env", mSkyEnvMDRSRV.Get());
+		LogSRV(L"Irr", mIBLIrrMDRSRV.Get());
+		LogSRV(L"Pref", mIBLPrefMDRSRV.Get());
+		LogSRV(L"BRDF", mIBLBrdfSRV.Get());
+
+		D3D11_SAMPLER_DESC iblSd{};
+		iblSd.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		iblSd.AddressU = iblSd.AddressV = iblSd.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+		iblSd.MaxLOD = D3D11_FLOAT32_MAX;
+		HR_T(m_pDevice->CreateSamplerState(&iblSd, &mSamIBLClamp));
 
 		// depth/raster states
+
 		D3D11_DEPTH_STENCIL_DESC sd{}; sd.DepthEnable = TRUE; sd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 		sd.DepthFunc = D3D11_COMPARISON_LESS_EQUAL; HR_T(m_pDevice->CreateDepthStencilState(&sd, &m_pSkyDSS));
 		D3D11_RASTERIZER_DESC rs{}; rs.FillMode = D3D11_FILL_SOLID; rs.CullMode = D3D11_CULL_FRONT;
@@ -565,8 +645,8 @@ void TutorialApp::UninitScene()
 	SAFE_RELEASE(m_pSkyIL);
 	SAFE_RELEASE(m_pSkyVB);
 	SAFE_RELEASE(m_pSkyIB);
-	SAFE_RELEASE(m_pSkySRV);
-	SAFE_RELEASE(m_pSkySampler);
+	//SAFE_RELEASE(m_pSkySRV);
+	//SAFE_RELEASE(m_pSkySampler);
 	SAFE_RELEASE(m_pSkyDSS);
 	SAFE_RELEASE(m_pSkyRS);
 
