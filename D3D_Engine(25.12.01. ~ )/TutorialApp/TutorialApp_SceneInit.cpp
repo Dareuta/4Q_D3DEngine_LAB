@@ -323,17 +323,6 @@ bool TutorialApp::InitScene()
 		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorEnvHDR.dds", nullptr, &mSkyEnvHDRSRV));
 		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorEnvMDR.dds", nullptr, &mSkyEnvMDRSRV));
 
-		//HR_T(DirectX::CreateDDSTextureFromFileEx(
-		//	m_pDevice, m_pDeviceContext,
-		//	L"../Resource/SkyBox/Bridge/bridgeEnvMDR.dds",
-		//	0, D3D11_USAGE_DEFAULT,
-		//	D3D11_BIND_SHADER_RESOURCE,
-		//	0, D3D11_RESOURCE_MISC_TEXTURECUBE,
-		//	DirectX::DDS_LOADER_FORCE_SRGB, nullptr,
-		//	mSkyEnvMDRSRV.ReleaseAndGetAddressOf(), nullptr
-		//));
-
-
 		auto DumpFmt = [](const wchar_t* name, ID3D11ShaderResourceView* srv)
 			{
 				D3D11_SHADER_RESOURCE_VIEW_DESC d{}; srv->GetDesc(&d);
@@ -347,35 +336,11 @@ bool TutorialApp::InitScene()
 
 		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorDiffuseHDR.dds", nullptr, &mIBLIrrHDRSRV));
 		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorDiffuseMDR.dds", nullptr, &mIBLIrrMDRSRV));
-
-		//HR_T(DirectX::CreateDDSTextureFromFileEx(
-		//	m_pDevice, m_pDeviceContext,
-		//	L"../Resource/SkyBox/Bridge/bridgeDiffuseMDR.dds",
-		//	0, D3D11_USAGE_DEFAULT,
-		//	D3D11_BIND_SHADER_RESOURCE,
-		//	0, D3D11_RESOURCE_MISC_TEXTURECUBE,
-		//	DirectX::DDS_LOADER_FORCE_SRGB, nullptr,
-		//	mIBLIrrMDRSRV.ReleaseAndGetAddressOf(), nullptr
-		//));
-
-
-		
+				
 		// 3) spec prefilter (mip 많아야 roughness 퍼짐)
 		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorSpecularHDR.dds", nullptr, &mIBLPrefHDRSRV));
 		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorSpecularMDR.dds", nullptr, &mIBLPrefMDRSRV));
 		
-		
-		//HR_T(DirectX::CreateDDSTextureFromFileEx(
-		//	m_pDevice, m_pDeviceContext,
-		//	L"../Resource/SkyBox/Bridge/bridgeSpecularHDR.dds",
-		//	0, D3D11_USAGE_DEFAULT,
-		//	D3D11_BIND_SHADER_RESOURCE,
-		//	0, D3D11_RESOURCE_MISC_TEXTURECUBE,
-		//	DirectX::DDS_LOADER_FORCE_SRGB, nullptr,
-		//	mIBLPrefHDRSRV.ReleaseAndGetAddressOf(), nullptr
-		//));
-
-
 		{
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
 			mIBLPrefMDRSRV->GetDesc(&desc);
