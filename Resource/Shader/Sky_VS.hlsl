@@ -17,7 +17,6 @@ VS_OUT main(VS_IN i)
     clip.z = clip.w;              
     o.SvPos = clip;
     o.Dir = i.Pos;
-    //o.Dir = mul(float4(i.Pos, 0.0f), View).xyz; //이거 하면 화면 따라다님
 
     return o;
 }

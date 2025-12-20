@@ -320,8 +320,8 @@ bool TutorialApp::InitScene()
 		//HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/TestCubemap/Hanako.dds", nullptr, &m_pSkySRV));
 
 		// 1) 배경용 env (선택)
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Bridge/bridgeEnvHDR.dds", nullptr, &mSkyEnvHDRSRV));
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Bridge/bridgeEnvMDR.dds", nullptr, &mSkyEnvMDRSRV));
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorEnvHDR.dds", nullptr, &mSkyEnvHDRSRV));
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorEnvMDR.dds", nullptr, &mSkyEnvMDRSRV));
 
 		//HR_T(DirectX::CreateDDSTextureFromFileEx(
 		//	m_pDevice, m_pDeviceContext,
@@ -345,8 +345,8 @@ bool TutorialApp::InitScene()
 
 		// 2) diffuse irradiance
 
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Bridge/bridgeDiffuseHDR.dds", nullptr, &mIBLIrrHDRSRV));
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Bridge/bridgeDiffuseMDR.dds", nullptr, &mIBLIrrMDRSRV));
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorDiffuseHDR.dds", nullptr, &mIBLIrrHDRSRV));
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorDiffuseMDR.dds", nullptr, &mIBLIrrMDRSRV));
 
 		//HR_T(DirectX::CreateDDSTextureFromFileEx(
 		//	m_pDevice, m_pDeviceContext,
@@ -359,12 +359,12 @@ bool TutorialApp::InitScene()
 		//));
 
 
-
+		
 		// 3) spec prefilter (mip 많아야 roughness 퍼짐)
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Bridge/bridgeSpecularHDR.dds", nullptr, &mIBLPrefHDRSRV));
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Bridge/bridgeSpecularMDR.dds", nullptr, &mIBLPrefMDRSRV));
-
-
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorSpecularHDR.dds", nullptr, &mIBLPrefHDRSRV));
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorSpecularMDR.dds", nullptr, &mIBLPrefMDRSRV));
+		
+		
 		//HR_T(DirectX::CreateDDSTextureFromFileEx(
 		//	m_pDevice, m_pDeviceContext,
 		//	L"../Resource/SkyBox/Bridge/bridgeSpecularHDR.dds",
@@ -384,7 +384,7 @@ bool TutorialApp::InitScene()
 		}
 
 		// 4) BRDF LUT (2D)
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Bridge/bridgeBrdf.dds", nullptr, &mIBLBrdfSRV));
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorBrdf.dds", nullptr, &mIBLBrdfSRV));
 
 		LogSRV(L"Env", mSkyEnvMDRSRV.Get());
 		LogSRV(L"Irr", mIBLIrrMDRSRV.Get());

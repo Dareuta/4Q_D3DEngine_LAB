@@ -182,35 +182,4 @@ cbuffer Bones : register(b4)
 }
 #endif
 
-// Shared.hlsli
-
-float3 SRGBToLinear_Approx(float3 c)
-{
-    return pow(max(c, 0.0), 2.2);
-}
-
-float3 LinearToSRGB_Approx(float3 c)
-{
-    return pow(saturate(c), 1.0 / 2.2);
-}
-
-// MDR(8bit UNORM + A) 환경맵 디코드: rgb * (a * scale)
-// 네가 range=0.5~1에서 잘 나왔다면 이 "scale"이 사실상 노출/스케일 노브임.
-float3 DecodeEnvMDR(float4 s, float scale)
-{
-    // 지금 네 MDR은 rgb가 sRGB처럼 행동했으니(색 뭉침/원색 느낌) 일단 linear로 디코드하는 쪽이 맞았음
-    float3 rgbLin = SRGBToLinear_Approx(s.rgb);
-    return rgbLin * (s.a * scale);
-}
-
-// 아주 순한 톤매핑 (색이 덜 변함)
-float3 Tonemap_Reinhard(float3 x)
-{
-    return x / (x + 1.0);
-}
-
-
 #endif // SHARED_HLSLI_INCLUDED
-
-
-

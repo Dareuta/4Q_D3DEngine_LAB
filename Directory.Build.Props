@@ -4,7 +4,7 @@
     <!-- vcpkg 루트 경로: 필요시 본인 경로로 수정 -->
 	  <!-- C:\Users\A\Documents\GitHub\vcpkg -->
 	  <!-- C:\Users\User\Documents\GitHub\vcpkg -->
-    <VcpkgRoot>C:\Users\A\Documents\GitHub\vcpkg</VcpkgRoot>
+    <VcpkgRoot>C:\Users\User\Documents\GitHub\vcpkg</VcpkgRoot>
     
     <TripletStatic>x64-windows-static-md</TripletStatic>
     <TripletDynamic>x64-windows</TripletDynamic>
