@@ -469,4 +469,11 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> mCB_Proc;
 	float mTimeSec = 0.0f; // 누적 시간(초)
+
+
+	int   mIBLSetIndex = 0;
+	float mPrefilterMaxMip = 0.0f;
+
+	bool LoadIBLSet(int idx);
+	static UINT GetMipCountFromSRV(ID3D11ShaderResourceView* srv);
 };

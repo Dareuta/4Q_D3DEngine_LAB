@@ -99,6 +99,7 @@ struct CB_PBRParams
 	DirectX::XMFLOAT4 envDiff; // rgb=color, w=intensity
 	DirectX::XMFLOAT4 envSpec; // rgb=color, w=intensity
 
+	DirectX::XMFLOAT4 envInfo; // x=prefilterMaxMip, yzw=unused (16B 정렬 유지)
 };
 static_assert((sizeof(CB_PBRParams) % 16) == 0);
 
@@ -109,3 +110,4 @@ struct CB_Proc
 	DirectX::XMFLOAT4 uProc2; // x=scrollX, y=scrollY, z=gridMix, w=unused
 };
 static_assert((sizeof(CB_Proc) % 16) == 0);
+

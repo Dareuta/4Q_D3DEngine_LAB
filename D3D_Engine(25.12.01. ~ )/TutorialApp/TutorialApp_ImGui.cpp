@@ -357,6 +357,19 @@ void TutorialApp::UpdateImGUI()
 			{
 				mPbr = s_initPbr;
 			}
+
+			ImGui::SeparatorText(u8"IBL / Skybox");
+
+			const char* iblItems[] = { "BakerSample", "Indoor", "Bridge" };
+			int prev = mIBLSetIndex;
+
+			if (ImGui::Combo(u8"IBL 세트", &mIBLSetIndex, iblItems, IM_ARRAYSIZE(iblItems)))
+			{
+				if (!LoadIBLSet(mIBLSetIndex))
+					mIBLSetIndex = prev; // 로드 실패 시 롤백
+			}
+
+			ImGui::Text("Prefilter MaxMip: %.0f", mPrefilterMaxMip);
 		}
 
 		// ─────────────────────────────────────────────────────────────

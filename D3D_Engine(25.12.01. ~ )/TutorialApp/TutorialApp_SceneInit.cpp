@@ -3,6 +3,94 @@
 #include "../../D3D_Core/pch.h"
 #include "TutorialApp.h"
 
+UINT TutorialApp::GetMipCountFromSRV(ID3D11ShaderResourceView* srv)
+{
+	if (!srv) return 0;
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC sd{};
+	srv->GetDesc(&sd);
+
+	UINT mips = 0;
+	if (sd.ViewDimension == D3D11_SRV_DIMENSION_TEXTURECUBE) mips = sd.TextureCube.MipLevels;
+	if (sd.ViewDimension == D3D11_SRV_DIMENSION_TEXTURE2D)   mips = sd.Texture2D.MipLevels;
+
+	if (mips == 0 || mips == UINT(-1))
+	{
+		Microsoft::WRL::ComPtr<ID3D11Resource> res;
+		srv->GetResource(&res);
+
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> tex;
+		if (SUCCEEDED(res.As(&tex)))
+		{
+			D3D11_TEXTURE2D_DESC td{};
+			tex->GetDesc(&td);
+			mips = td.MipLevels;
+		}
+	}
+	return mips;
+}
+
+bool TutorialApp::LoadIBLSet(int idx)
+{
+	struct Set {
+		const char* name;
+		const wchar_t* env;
+		const wchar_t* irr;
+		const wchar_t* pref;
+	};
+
+	static const Set kSets[] = {
+		{ "BakerSample",
+		  L"../Resource/SkyBox/Sample/BakerSampleEnvHDR.dds",
+		  L"../Resource/SkyBox/Sample/BakerSampleDiffuseHDR.dds",
+		  L"../Resource/SkyBox/Sample/BakerSampleSpecularHDR.dds" },
+
+		{ "Skybox_B",
+		  L"../Resource/SkyBox/Indoor/indoorEnvHDR.dds",
+		  L"../Resource/SkyBox/Indoor/indoorDiffuseHDR.dds",
+		  L"../Resource/SkyBox/Indoor/indoorSpecularHDR.dds" },
+
+		{ "Skybox_C",
+		  L"../Resource/SkyBox/Bridge/bridgeEnvHDR.dds",
+		  L"../Resource/SkyBox/Bridge/bridgeDiffuseHDR.dds",
+		  L"../Resource/SkyBox/Bridge/bridgeSpecularHDR.dds" },
+	};
+
+	if (idx < 0 || idx >= (int)_countof(kSets)) return false;
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> env, irr, pref;
+
+	auto TryLoad = [&](const wchar_t* path, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& out) -> bool {
+		HRESULT hr = CreateDDSTextureFromFile(m_pDevice, path, nullptr, out.GetAddressOf());
+		if (FAILED(hr)) {
+			wprintf(L"[IBL] load failed: %s (hr=0x%08X)\n", path, (unsigned)hr);
+			return false;
+		}
+		return true;
+		};
+
+	if (!TryLoad(kSets[idx].env, env))  return false;
+	if (!TryLoad(kSets[idx].irr, irr))  return false;
+	if (!TryLoad(kSets[idx].pref, pref)) return false;
+
+	// 실제 렌더 경로가 MDR 멤버를 쓰고 있으니 거기에 박아줌
+	mSkyEnvMDRSRV = env;
+	mIBLIrrMDRSRV = irr;
+	mIBLPrefMDRSRV = pref;
+
+	// (HDR 멤버도 같이 맞춰두면 헷갈림 덜함)
+	mSkyEnvHDRSRV = env;
+	mIBLIrrHDRSRV = irr;
+	mIBLPrefHDRSRV = pref;
+
+	UINT mipCount = GetMipCountFromSRV(pref.Get());
+	mPrefilterMaxMip = (mipCount > 0) ? float(mipCount - 1) : 0.0f;
+
+	mIBLSetIndex = idx;
+
+	printf("[IBL] switched set=%d, prefilter mips=%u (maxMip=%.0f)\n", idx, mipCount, mPrefilterMaxMip);
+	return true;
+}
 
 static void LogSRV(const wchar_t* name, ID3D11ShaderResourceView* srv)
 {
@@ -319,41 +407,19 @@ bool TutorialApp::InitScene()
 		//HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/TestCubemap/Cubemap.dds", nullptr, &m_pSkySRV));
 		//HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/TestCubemap/Hanako.dds", nullptr, &m_pSkySRV));
 
-		// 1) 배경용 env (선택)
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorEnvHDR.dds", nullptr, &mSkyEnvHDRSRV));
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorEnvMDR.dds", nullptr, &mSkyEnvMDRSRV));
+		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/baseBrdf.dds", nullptr, &mIBLBrdfSRV));
 
-		auto DumpFmt = [](const wchar_t* name, ID3D11ShaderResourceView* srv)
-			{
-				D3D11_SHADER_RESOURCE_VIEW_DESC d{}; srv->GetDesc(&d);
-				wprintf(L"%s: dim=%d fmt=%d\n", name, d.ViewDimension, d.Format);
-			};
+		// 1~3) Env/Irr/Pref 는 LoadIBLSet()에서 통일
+		mIBLSetIndex = 0;
 
-		DumpFmt(L"EnvHDR", mSkyEnvHDRSRV.Get());
-		DumpFmt(L"EnvMDR", mSkyEnvMDRSRV.Get());
-
-		// 2) diffuse irradiance
-
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorDiffuseHDR.dds", nullptr, &mIBLIrrHDRSRV));
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorDiffuseMDR.dds", nullptr, &mIBLIrrMDRSRV));
-				
-		// 3) spec prefilter (mip 많아야 roughness 퍼짐)
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorSpecularHDR.dds", nullptr, &mIBLPrefHDRSRV));
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorSpecularMDR.dds", nullptr, &mIBLPrefMDRSRV));
-		
+		if (!LoadIBLSet(mIBLSetIndex))
 		{
-			D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
-			mIBLPrefMDRSRV->GetDesc(&desc);
-			printf("Prefilter SRV mips = %u\n",
-				(desc.ViewDimension == D3D11_SRV_DIMENSION_TEXTURECUBE) ? desc.TextureCube.MipLevels : 0);
+			// 너 스타일에 맞게 처리해. 일단은 강제 중단이 낫다.
+			std::cout << "먼가 잘못된거심" << std::endl;
+			HR_T(E_FAIL);
 		}
 
-		// 4) BRDF LUT (2D)
-		HR_T(CreateDDSTextureFromFile(m_pDevice, L"../Resource/SkyBox/Indoor/indoorBrdf.dds", nullptr, &mIBLBrdfSRV));
-
-		LogSRV(L"Env", mSkyEnvMDRSRV.Get());
-		LogSRV(L"Irr", mIBLIrrMDRSRV.Get());
-		LogSRV(L"Pref", mIBLPrefMDRSRV.Get());
+		// (선택) 한번만 찍고 싶으면 LoadIBLSet 안에서 찍는 게 더 깔끔함
 		LogSRV(L"BRDF", mIBLBrdfSRV.Get());
 
 		D3D11_SAMPLER_DESC iblSd{};

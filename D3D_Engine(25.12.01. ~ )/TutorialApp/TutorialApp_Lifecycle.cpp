@@ -165,7 +165,7 @@ void TutorialApp::OnRender()
 
 	pbr.envDiff = XMFLOAT4(mPbr.envDiffColor.x, mPbr.envDiffColor.y, mPbr.envDiffColor.z, mPbr.envDiffIntensity);
 	pbr.envSpec = XMFLOAT4(mPbr.envSpecColor.x, mPbr.envSpecColor.y, mPbr.envSpecColor.z, mPbr.envSpecIntensity);
-
+	pbr.envInfo = XMFLOAT4(mPrefilterMaxMip, 0, 0, 0);
 
 	ctx->UpdateSubresource(m_pPBRParamsCB, 0, nullptr, &pbr, 0, 0);
 	ctx->PSSetConstantBuffers(8, 1, &m_pPBRParamsCB); // b8
