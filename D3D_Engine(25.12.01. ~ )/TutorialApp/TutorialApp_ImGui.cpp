@@ -370,6 +370,14 @@ void TutorialApp::UpdateImGUI()
 			}
 
 			ImGui::Text("Prefilter MaxMip: %.0f", mPrefilterMaxMip);
+
+			ImGui::SeparatorText(u8"IBL 강도(Env)");
+
+			ImGui::ColorEdit3(u8"Env Diff Color", (float*)&mPbr.envDiffColor);
+			ImGui::SliderFloat(u8"Env Diff Intensity", &mPbr.envDiffIntensity, 0.0f, 3.0f, "%.3f");
+
+			ImGui::ColorEdit3(u8"Env Spec Color", (float*)&mPbr.envSpecColor);
+			ImGui::SliderFloat(u8"Env Spec Intensity", &mPbr.envSpecIntensity, 0.0f, 3.0f, "%.3f");
 		}
 
 		// ─────────────────────────────────────────────────────────────

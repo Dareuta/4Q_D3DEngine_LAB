@@ -461,10 +461,10 @@ private:
 		float roughness = 0.5f;       // 0에 가까울수록 거울
 
 		Vector3 envDiffColor = { 1, 1, 1 };
-		float   envDiffIntensity = 0.03f;   // 기본값 낮게(중요)
+		float   envDiffIntensity = 1.0f;   
 
 		Vector3 envSpecColor = { 1, 1, 1 };
-		float   envSpecIntensity = 0.02f;   // 기본값 낮게
+		float   envSpecIntensity = 1.0f;   
 	} mPbr;
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> mCB_Proc;

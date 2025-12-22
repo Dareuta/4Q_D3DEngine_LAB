@@ -18,8 +18,8 @@ cbuffer PBRParams : register(b8)
     float4 pBaseColor; // rgb: baseColor override
     float4 pParams; // x=metallic, y=roughness, z=normalStrength, w=flipNormalY(0/1)
 
-    float4 pEnvDiff; // (현재 미사용) rgb=color, w=intensity
-    float4 pEnvSpec; // (현재 미사용) rgb=color, w=intensity
+    float4 pEnvDiff; //  rgb=color, w=intensity
+    float4 pEnvSpec; //  rgb=color, w=intensity
 
     float4 pEnvInfo; // x=prefilterMaxMip
 }
@@ -182,18 +182,18 @@ float4 main(PS_INPUT input) : SV_Target
     // IBL (Image Based Lighting) : diffuse irradiance + spec prefilter + BRDF LUT
     // ------------------------------------------------------------------------
     float ao = 1.0f; // AO 텍스처 붙이면 여기만 교체
-
-    // NOTE: 현재 코드에서 사용하지 않지만 남겨둠(원래 코드 유지)
-    const float MAX_ENV_LOD = 7.0f;
-
+    
     float3 R = reflect(-V, Nw);
 
+    float3 envDiff = pEnvDiff.rgb * pEnvDiff.w;
+    float3 envSpec = pEnvSpec.rgb * pEnvSpec.w;
+    
     // Diffuse IBL (irradiance cube)
-    float3 irradiance = txIrr.Sample(samClampLinear, Nw).rgb;
-
+    float3 irradiance = txIrr.Sample(samClampLinear, Nw).rgb * envDiff;
+        
     // Specular IBL (prefiltered cube, mip = roughness 기반)
     float maxMip = max(pEnvInfo.x, 0.0f);
-    float3 prefiltered = txPref.SampleLevel(samClampLinear, R, roughness * maxMip).rgb;
+    float3 prefiltered = txPref.SampleLevel(samClampLinear, R, roughness * maxMip).rgb * envSpec;
 
     // BRDF LUT (2D)
     float2 brdf = txBRDF.Sample(samClampLinear, float2(NdotV, roughness)).rg;
