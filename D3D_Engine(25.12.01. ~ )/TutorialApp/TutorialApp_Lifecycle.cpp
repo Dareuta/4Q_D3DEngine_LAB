@@ -11,6 +11,9 @@ bool TutorialApp::OnInitialize()
 	if (!CreateSceneHDRResources(m_pDevice))
 		return false;
 
+	CreateSceneHDRResources(m_pDevice);
+	CreateGBufferResources(m_pDevice);
+
 #ifdef _DEBUG
 	if (!InitImGUI())
 		return false;
@@ -200,7 +203,7 @@ void TutorialApp::OnRender()
 	RenderShadowPass_Main(ctx, cb);
 	// 4) SKYBOX (선택)
 	RenderSkyPass(ctx, viewNoTrans);
-
+	
 	// 5) 본 패스에서 섀도우 샘플 바인드 (PS: t5/s1/b6)
 	{
 		ID3D11Buffer* b6r = mCB_Shadow.Get();
@@ -242,14 +245,53 @@ void TutorialApp::OnRender()
 		}
 	}
 
-	// 6) OPAQUE
-	RenderOpaquePass(ctx, cb, eye);
-	// 7) CUTOUT (alpha-test 강제 모드)
-	RenderCutoutPass(ctx, cb, eye);
-	// 8) TRANSPARENT
-	RenderTransparentPass(ctx, cb, eye);
-	// 9) 디버그(광원 화살표, 그리드)
-	RenderDebugPass(ctx, cb, dirV);
+	if (mDbg.useDeferred)
+	{
+		// 1) GBuffer 바인드
+		ID3D11RenderTargetView* mrt[4] =
+		{
+			mGBufferRTV[0].Get(),
+			mGBufferRTV[1].Get(),
+			mGBufferRTV[2].Get(),
+			mGBufferRTV[3].Get(),
+		};
+		ctx->OMSetRenderTargets(4, mrt, m_pDepthStencilView);
+
+		const float z4[4] = { 0,0,0,0 };
+		ctx->ClearRenderTargetView(mGBufferRTV[0].Get(), z4);
+		ctx->ClearRenderTargetView(mGBufferRTV[1].Get(), z4);
+		ctx->ClearRenderTargetView(mGBufferRTV[2].Get(), z4);
+		ctx->ClearRenderTargetView(mGBufferRTV[3].Get(), z4);
+		ctx->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+		// 2) Geometry → GBuffer 기록
+		RenderGBufferPass(ctx, cb);
+
+		// 3) Lighting 결과를 mainRTV로
+		ctx->OMSetRenderTargets(1, &mainRTV, m_pDepthStencilView);
+
+		// 풀스크린으로 GBuffer를 보겠다면 Debug, 아니면 Lighting
+		if (mDbg.showGBufferFS)
+			RenderGBufferDebugPass(ctx);
+		else
+			RenderDeferredLightPass(ctx);
+
+		ctx->OMSetRenderTargets(1, &mainRTV, m_pDepthStencilView);
+		RenderTransparentPass(ctx, cb, eye);   
+
+		// 4) 나머지(선택)
+		RenderSkyPass(ctx, viewNoTrans);
+		RenderTransparentPass(ctx, cb, eye);
+		RenderDebugPass(ctx, cb, eye); // 네 프로젝트에서 쓰는 디버그(그리드/화살표) 함수 이름에 맞춰 호출
+	}
+	else
+	{
+		// 기존 Forward 경로 그대로
+		RenderSkyPass(ctx, viewNoTrans);
+		RenderOpaquePass(ctx, cb, eye);
+		RenderTransparentPass(ctx, cb, eye);
+		RenderDebugPass(ctx, cb, eye);
+	}
 
 
 

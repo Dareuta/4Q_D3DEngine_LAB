@@ -158,6 +158,116 @@ void TutorialApp::RenderShadowPass_Main(
 	//=============================================
 }
 
+
+void TutorialApp::BindStaticMeshPipeline_GBuffer(ID3D11DeviceContext* ctx)
+{
+	ctx->IASetInputLayout(m_pMeshIL);
+	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ctx->VSSetShader(mVS_GBuffer.Get(), nullptr, 0);
+	ctx->PSSetShader(mPS_GBuffer.Get(), nullptr, 0);
+}
+
+void TutorialApp::RenderGBufferPass(ID3D11DeviceContext* ctx, ConstantBuffer& baseCB)
+{
+	float bf[4] = { 0,0,0,0 };
+	ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
+	ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0);
+
+	BindStaticMeshPipeline_GBuffer(ctx);
+
+	// 중요: 기존 DrawStatic...이 "mPbr.enable=false면 BlinnPhong 취급" 같은 분기 갖고 있어서
+	// deferred에서는 강제로 true로 두는 게 안전함(메탈/러프 텍스처 플래그가 제대로 감)
+	bool oldPBR = mPbr.enable;
+	mPbr.enable = true;
+
+	if (mDbg.showOpaque)
+	{
+		if (mTreeX.enabled)  DrawStaticOpaqueOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
+		if (mCharX.enabled)  DrawStaticOpaqueOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
+		if (mZeldaX.enabled) DrawStaticOpaqueOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
+		if (mFemaleX.enabled)DrawStaticOpaqueOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
+	}
+
+	// alpha cut도 GBuffer에 들어가야 “보이는 픽셀만” 남음
+	if (mDbg.forceAlphaClip && mDbg.showTransparent)
+	{
+		if (mTreeX.enabled)   DrawStaticAlphaCutOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
+		if (mCharX.enabled)   DrawStaticAlphaCutOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
+		if (mZeldaX.enabled)  DrawStaticAlphaCutOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
+		if (mFemaleX.enabled) DrawStaticAlphaCutOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
+	}
+
+
+	mPbr.enable = oldPBR;
+}
+
+void TutorialApp::RenderDeferredLightPass(ID3D11DeviceContext* ctx)
+{
+	// fullscreen tri
+	ctx->IASetInputLayout(nullptr);
+	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ID3D11Buffer* nullVB[1] = { nullptr };
+	UINT zero = 0;
+	ctx->IASetVertexBuffers(0, 1, nullVB, &zero, &zero);
+	ctx->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+
+	ctx->VSSetShader(mVS_DeferredLight.Get(), nullptr, 0);
+	ctx->PSSetShader(mPS_DeferredLight.Get(), nullptr, 0);
+
+	ID3D11ShaderResourceView* srvs[4] =
+	{
+		mGBufferSRV[0].Get(),
+		mGBufferSRV[1].Get(),
+		mGBufferSRV[2].Get(),
+		mGBufferSRV[3].Get(),
+	};
+	ctx->PSSetShaderResources(0, 4, srvs);
+
+	ctx->Draw(3, 0);
+
+	// hazard 방지(다음 프레임에 RTV로 다시 쓸 거라 필수)
+	ID3D11ShaderResourceView* nullSRV[4] = { nullptr,nullptr,nullptr,nullptr };
+	ctx->PSSetShaderResources(0, 4, nullSRV);
+}
+
+void TutorialApp::RenderGBufferDebugPass(ID3D11DeviceContext* ctx)
+{
+	if (!mPS_GBufferDebug || !mCB_GBufferDebug) return;
+
+	ctx->IASetInputLayout(nullptr);
+	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ID3D11Buffer* nullVB[1] = { nullptr };
+	UINT zero = 0;
+	ctx->IASetVertexBuffers(0, 1, nullVB, &zero, &zero);
+	ctx->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+
+	ctx->VSSetShader(mVS_DeferredLight.Get(), nullptr, 0); // 같은 VS 사용
+	ctx->PSSetShader(mPS_GBufferDebug.Get(), nullptr, 0);
+
+	CB_GBufferDebug cb{};
+	cb.mode = (UINT)mDbg.gbufferMode;
+	cb.posRange = mDbg.gbufferPosRange;
+	ctx->UpdateSubresource(mCB_GBufferDebug.Get(), 0, nullptr, &cb, 0, 0);
+	ID3D11Buffer* b11 = mCB_GBufferDebug.Get();
+	ctx->PSSetConstantBuffers(11, 1, &b11);
+
+	ID3D11ShaderResourceView* srvs[4] =
+	{
+		mGBufferSRV[0].Get(),
+		mGBufferSRV[1].Get(),
+		mGBufferSRV[2].Get(),
+		mGBufferSRV[3].Get(),
+	};
+	ctx->PSSetShaderResources(0, 4, srvs);
+
+	ctx->Draw(3, 0);
+
+	ID3D11ShaderResourceView* nullSRV[4] = { nullptr,nullptr,nullptr,nullptr };
+	ctx->PSSetShaderResources(0, 4, nullSRV);
+}
+
+
+
 void TutorialApp::RenderToneMapPass(ID3D11DeviceContext* ctx)
 {
 	if (!mSceneHDRSRV || !mVS_ToneMap || !mPS_ToneMap || !mCB_ToneMap)

@@ -96,6 +96,12 @@
     <FxCompile Include="..\Resource\Shader\DebugColor_VS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
+    <FxCompile Include="..\Resource\Shader\Deferred_GBuffer.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Resource\Shader\Deferred_Light.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
     <FxCompile Include="..\Resource\Shader\DepthOnly_PS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
@@ -103,6 +109,12 @@
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="..\Resource\Shader\DepthOnly_VS.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Resource\Shader\GBufferDebug.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Resource\Shader\PBR_PS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="..\Resource\Shader\PixelShader.hlsl">
@@ -114,13 +126,13 @@
     <FxCompile Include="..\Resource\Shader\Sky_VS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
+    <FxCompile Include="..\Resource\Shader\ToneMap.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
     <FxCompile Include="..\Resource\Shader\VertexShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="..\Resource\Shader\VertexShaderSkinning.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Resource\Shader\PBR_PS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>

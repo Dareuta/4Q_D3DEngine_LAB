@@ -120,3 +120,45 @@ bool TutorialApp::CreateSceneHDRResources(ID3D11Device* dev)
 	dev->CreateShaderResourceView(mSceneHDRTex.Get(), &sd, mSceneHDRSRV.GetAddressOf());
 	return true;
 }
+
+bool TutorialApp::CreateGBufferResources(ID3D11Device* dev)
+{
+	for (int i = 0; i < GBUF_COUNT; ++i) {
+		mGBufferTex[i].Reset();
+		mGBufferRTV[i].Reset();
+		mGBufferSRV[i].Reset();
+	}
+
+	auto MakeRT = [&](int idx, DXGI_FORMAT fmt)
+		{
+			D3D11_TEXTURE2D_DESC td{};
+			td.Width = m_ClientWidth;
+			td.Height = m_ClientHeight;
+			td.MipLevels = 1;
+			td.ArraySize = 1;
+			td.Format = fmt;
+			td.SampleDesc.Count = 1;
+			td.Usage = D3D11_USAGE_DEFAULT;
+			td.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+			HR_T(dev->CreateTexture2D(&td, nullptr, mGBufferTex[idx].GetAddressOf()));
+			HR_T(dev->CreateRenderTargetView(mGBufferTex[idx].Get(), nullptr, mGBufferRTV[idx].GetAddressOf()));
+
+			D3D11_SHADER_RESOURCE_VIEW_DESC sd{};
+			sd.Format = fmt;
+			sd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			sd.Texture2D.MipLevels = 1;
+			HR_T(dev->CreateShaderResourceView(mGBufferTex[idx].Get(), &sd, mGBufferSRV[idx].GetAddressOf()));
+		};
+
+	// 0: WorldPos (float16)
+	MakeRT(0, DXGI_FORMAT_R16G16B16A16_FLOAT);
+	// 1: WorldNormal encoded (float16)
+	MakeRT(1, DXGI_FORMAT_R16G16B16A16_FLOAT);
+	// 2: BaseColor (UNORM)
+	MakeRT(2, DXGI_FORMAT_R8G8B8A8_UNORM);
+	// 3: Metallic/Roughness (UNORM)
+	MakeRT(3, DXGI_FORMAT_R8G8B8A8_UNORM);
+
+	return true;
+}

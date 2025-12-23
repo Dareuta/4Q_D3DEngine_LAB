@@ -213,6 +213,45 @@ bool TutorialApp::InitScene()
 	}
 
 	// =========================================================
+	// Deferred: GBuffer + Light + Debug
+	// =========================================================
+	{
+		using Microsoft::WRL::ComPtr;
+		ComPtr<ID3DBlob> vsb, psb;
+
+		Compile(L"../Resource/Shader/Deferred_GBuffer.hlsl", "VS_Main", "vs_5_0", vsb);
+		HR_T(m_pDevice->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, mVS_GBuffer.GetAddressOf()));
+
+		Compile(L"../Resource/Shader/Deferred_GBuffer.hlsl", "PS_Main", "ps_5_0", psb);
+		HR_T(m_pDevice->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, mPS_GBuffer.GetAddressOf()));
+	}
+
+	{
+		using Microsoft::WRL::ComPtr;
+		ComPtr<ID3DBlob> vsb, psb;
+
+		Compile(L"../Resource/Shader/Deferred_Light.hlsl", "VS_Main", "vs_5_0", vsb);
+		HR_T(m_pDevice->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, mVS_DeferredLight.GetAddressOf()));
+
+		Compile(L"../Resource/Shader/Deferred_Light.hlsl", "PS_Main", "ps_5_0", psb);
+		HR_T(m_pDevice->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, mPS_DeferredLight.GetAddressOf()));
+	}
+
+	{
+		using Microsoft::WRL::ComPtr;
+		ComPtr<ID3DBlob> psb;
+
+		Compile(L"../Resource/Shader/GBufferDebug.hlsl", "PS_Main", "ps_5_0", psb);
+		HR_T(m_pDevice->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, mPS_GBufferDebug.GetAddressOf()));
+
+		D3D11_BUFFER_DESC bd{};
+		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(CB_GBufferDebug);
+		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, mCB_GBufferDebug.GetAddressOf()));
+	}
+
+	// =========================================================
 	// 3) Skinned VS(+IL)
 	// =========================================================
 	{

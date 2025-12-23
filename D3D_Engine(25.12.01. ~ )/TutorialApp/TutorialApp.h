@@ -366,6 +366,12 @@ private:
 		float toonSpecStep = 0.55f;
 		float toonSpecBoost = 1.0f;
 		float toonShadowMin = 0.02f;
+
+		bool useDeferred = false;
+		bool showGBuffer = false;      // ImGui 썸네일
+		bool showGBufferFS = false;    // 풀스크린 디버그
+		int  gbufferMode = 2;          // 1..4
+		float gbufferPosRange = 200.0f;
 	};
 
 	static Matrix ComposeSRT(const XformUI& xf)
@@ -483,10 +489,7 @@ private:
 	static UINT GetMipCountFromSRV(ID3D11ShaderResourceView* srv);
 	// ============================================================
 // ToneMapping / SceneHDR
-// ============================================================
-
-
-	
+// ============================================================	
 
 	// ---- HDR Scene RenderTarget (R16G16B16A16_FLOAT) ----
 	Microsoft::WRL::ComPtr<ID3D11Texture2D>          mSceneHDRTex;
@@ -519,4 +522,28 @@ private:
 		float gamma = 2.2f;   // 1.0~3.0
 	};
 	ToneMapSettings mTone;
+
+	static constexpr int GBUF_COUNT = 4;
+
+	Microsoft::WRL::ComPtr<ID3D11Texture2D>           mGBufferTex[GBUF_COUNT];
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView>    mGBufferRTV[GBUF_COUNT];
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>  mGBufferSRV[GBUF_COUNT];
+
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> mVS_GBuffer;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>  mPS_GBuffer;
+
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> mVS_DeferredLight;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>  mPS_DeferredLight;
+
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>  mPS_GBufferDebug;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>       mCB_GBufferDebug;
+
+	struct CB_GBufferDebug { UINT mode; float posRange; float pad[2]; };
+
+	bool CreateGBufferResources(ID3D11Device* dev);
+	void BindStaticMeshPipeline_GBuffer(ID3D11DeviceContext* ctx);
+	void RenderGBufferPass(ID3D11DeviceContext* ctx, ConstantBuffer& baseCB);
+	void RenderDeferredLightPass(ID3D11DeviceContext* ctx);
+	void RenderGBufferDebugPass(ID3D11DeviceContext* ctx);
+
 };

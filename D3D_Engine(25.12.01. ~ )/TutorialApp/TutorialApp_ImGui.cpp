@@ -427,9 +427,43 @@ void TutorialApp::UpdateImGUI()
 			ImGui::Checkbox(u8"강제 알파컷(Force AlphaClip)", &mDbg.forceAlphaClip);
 			ImGui::DragFloat("AlphaCut", &mDbg.alphaCut, 0.01f, 0.0f, 1.0f);
 
+
+			ImGui::Checkbox("Deferred Shading", &mDbg.useDeferred);
+			ImGui::Checkbox("Show GBuffer Thumbnails", &mDbg.showGBuffer);
+			ImGui::Checkbox("Fullscreen GBuffer Debug", &mDbg.showGBufferFS);
+
+			if (mDbg.showGBufferFS)
+			{
+				const char* modes[] = { "WorldPos", "Normal", "BaseColor", "Metal/Rough" };
+				int m = mDbg.gbufferMode - 1;
+				ImGui::Combo("GBuffer Mode", &m, modes, IM_ARRAYSIZE(modes));
+				mDbg.gbufferMode = m + 1;
+				ImGui::DragFloat("WorldPos Range", &mDbg.gbufferPosRange, 1.0f, 1.0f, 5000.0f);
+			}
+
+			if (mDbg.showGBuffer && mGBufferSRV[0])
+			{
+				ImVec2 sz(220, 140);
+
+				ImGui::Text("G0 WorldPos (raw float, may saturate)");
+				ImGui::Image((ImTextureID)mGBufferSRV[0].Get(), sz);
+
+				ImGui::Text("G1 WorldNormal (0..1)");
+				ImGui::Image((ImTextureID)mGBufferSRV[1].Get(), sz);
+
+				ImGui::Text("G2 BaseColor");
+				ImGui::Image((ImTextureID)mGBufferSRV[2].Get(), sz);
+
+				ImGui::Text("G3 Metallic/Roughness");
+				ImGui::Image((ImTextureID)mGBufferSRV[3].Get(), sz);
+			}
+
+
 			if (ImGui::Button(u8"디버그 초기화(Reset)")) {
 				mDbg = DebugToggles();
 			}
+
+
 		}
 	}
 
