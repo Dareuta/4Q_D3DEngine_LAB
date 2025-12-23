@@ -13,6 +13,14 @@ void TutorialApp::RenderShadowPass_Main(
 	ctx->RSGetState(&rsBeforeShadow); // AddRef
 
 	{
+		ID3D11RenderTargetView* rtBefore = nullptr;
+		ID3D11DepthStencilView* dsBefore = nullptr;
+		ctx->OMGetRenderTargets(1, &rtBefore, &dsBefore); // AddRef됨
+
+		D3D11_VIEWPORT vpBefore{};
+		UINT vpCount = 1;
+		ctx->RSGetViewports(&vpCount, &vpBefore);
+
 		// t5 언바인드, DSV only
 		ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
 		ctx->PSSetShaderResources(5, 1, nullSRV);
@@ -136,14 +144,12 @@ void TutorialApp::RenderShadowPass_Main(
 		}
 
 		// 메인 RT 복구
-		ID3D11RenderTargetView* rtv = m_pRenderTargetView;
-		ctx->OMSetRenderTargets(1, &rtv, m_pDepthStencilView);
+		// 원래 RT/DS/VP 복구 (SceneHDR 사용 시 필수)
+		ctx->OMSetRenderTargets(1, &rtBefore, dsBefore);
+		ctx->RSSetViewports(1, &vpBefore);
 
-		D3D11_VIEWPORT vp{};
-		vp.TopLeftX = 0; vp.TopLeftY = 0;
-		vp.Width = (float)m_ClientWidth; vp.Height = (float)m_ClientHeight;
-		vp.MinDepth = 0.0f; vp.MaxDepth = 1.0f;
-		ctx->RSSetViewports(1, &vp);
+		SAFE_RELEASE(rtBefore);
+		SAFE_RELEASE(dsBefore);
 	}
 
 	ctx->RSSetState(rsBeforeShadow);
@@ -151,6 +157,74 @@ void TutorialApp::RenderShadowPass_Main(
 
 	//=============================================
 }
+
+void TutorialApp::RenderToneMapPass(ID3D11DeviceContext* ctx)
+{
+	if (!mSceneHDRSRV || !mVS_ToneMap || !mPS_ToneMap || !mCB_ToneMap)
+		return;
+
+	ID3D11RasterizerState* oldRS = nullptr;
+	ctx->RSGetState(&oldRS);
+	ctx->RSSetState(m_pDbgRS); // Solid + CullNone (InitScene에서 만든 거)
+
+	// BackBuffer로 출력
+	ID3D11RenderTargetView* bb = m_pRenderTargetView;
+	ctx->OMSetRenderTargets(1, &bb, nullptr);
+
+	// viewport
+	D3D11_VIEWPORT vp{};
+	vp.TopLeftX = 0; vp.TopLeftY = 0;
+	vp.Width = (float)m_ClientWidth;
+	vp.Height = (float)m_ClientHeight;
+	vp.MinDepth = 0.0f; vp.MaxDepth = 1.0f;
+	ctx->RSSetViewports(1, &vp);
+
+	// 상태(안전빵)
+	float bf[4] = { 0,0,0,0 };
+	ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
+	if (m_pDSS_Disabled) ctx->OMSetDepthStencilState(m_pDSS_Disabled, 0);
+	else                ctx->OMSetDepthStencilState(nullptr, 0);
+
+	// 파이프라인: 풀스크린 tri (SV_VertexID)
+	ctx->IASetInputLayout(nullptr);
+	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ID3D11Buffer* nullVB[1] = { nullptr };
+	UINT zero = 0;
+	ctx->IASetVertexBuffers(0, 1, nullVB, &zero, &zero);
+	ctx->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+
+	ctx->VSSetShader(mVS_ToneMap.Get(), nullptr, 0);
+	ctx->PSSetShader(mPS_ToneMap.Get(), nullptr, 0);
+
+	// 상수 업데이트 (b10)
+	CB_ToneMap cb{};
+	cb.exposureEV = mTone.exposureEV;
+	cb.gamma = mTone.gamma;
+	cb.operatorId = (mTone.enable ? (UINT)mTone.operatorId : 0u);
+	cb.flags = 1u; // gamma 적용
+	ctx->UpdateSubresource(mCB_ToneMap.Get(), 0, nullptr, &cb, 0, 0);
+
+	ID3D11Buffer* b10 = mCB_ToneMap.Get();
+	ctx->PSSetConstantBuffers(10, 1, &b10);
+
+	// SRV(t0) + Samp(s0)
+	ID3D11ShaderResourceView* hdr = mSceneHDRSRV.Get();
+	ctx->PSSetShaderResources(0, 1, &hdr);
+
+	ID3D11SamplerState* samp = mSamToneMapClamp ? mSamToneMapClamp.Get() : m_pSamplerLinear;
+	ctx->PSSetSamplers(0, 1, &samp);
+
+	ctx->Draw(3, 0);
+
+	// hazard 방지: SRV 언바인드
+	ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
+	ctx->PSSetShaderResources(0, 1, nullSRV);
+
+	ctx->RSSetState(oldRS);
+	SAFE_RELEASE(oldRS);
+
+}
+
 
 //SKYBOX
 void TutorialApp::RenderSkyPass(

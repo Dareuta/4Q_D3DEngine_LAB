@@ -3,6 +3,9 @@
 #include "../../D3D_Core/pch.h"
 #include "TutorialApp.h"
 
+#include <d3dcompiler.h>
+
+
 UINT TutorialApp::GetMipCountFromSRV(ID3D11ShaderResourceView* srv)
 {
 	if (!srv) return 0;
@@ -180,6 +183,34 @@ bool TutorialApp::InitScene()
 	bd.ByteWidth = sizeof(CB_PBRParams);
 	HR_T(m_pDevice->CreateBuffer(&bd, nullptr, &m_pPBRParamsCB));
 
+	// =========================================================
+	// ToneMap: shaders + CB + sampler
+	// =========================================================
+
+	{
+		using Microsoft::WRL::ComPtr;
+
+		ComPtr<ID3DBlob> vsb, psb;
+		Compile(L"../Resource/Shader/ToneMap.hlsl", "VS_Main", "vs_5_0", vsb);
+		Compile(L"../Resource/Shader/ToneMap.hlsl", "PS_Main", "ps_5_0", psb);
+
+		HR_T(m_pDevice->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, mVS_ToneMap.GetAddressOf()));
+		HR_T(m_pDevice->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, mPS_ToneMap.GetAddressOf()));
+
+		// b10
+		D3D11_BUFFER_DESC bd{};
+		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(CB_ToneMap);
+		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, mCB_ToneMap.GetAddressOf()));
+
+		// s0 clamp
+		D3D11_SAMPLER_DESC sd{};
+		sd.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		sd.AddressU = sd.AddressV = sd.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+		sd.MaxLOD = D3D11_FLOAT32_MAX;
+		HR_T(m_pDevice->CreateSamplerState(&sd, mSamToneMapClamp.GetAddressOf()));
+	}
 
 	// =========================================================
 	// 3) Skinned VS(+IL)

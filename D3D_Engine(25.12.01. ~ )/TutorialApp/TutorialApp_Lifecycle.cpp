@@ -8,6 +8,9 @@ bool TutorialApp::OnInitialize()
 	if (!InitD3D())
 		return false;
 
+	if (!CreateSceneHDRResources(m_pDevice))
+		return false;
+
 #ifdef _DEBUG
 	if (!InitImGUI())
 		return false;
@@ -113,8 +116,22 @@ void TutorialApp::OnRender()
 	else                                     ctx->RSSetState(m_pCullBackRS);
 
 	const float clearColor[4] = { color[0], color[1], color[2], color[3] };
-	ctx->ClearRenderTargetView(m_pRenderTargetView, clearColor);
+
+	// (안전빵) 이전 프레임 ToneMap에서 t0에 SRV 걸렸을 수 있으니 해제
+	ID3D11ShaderResourceView* nullSRV0[1] = { nullptr };
+	ctx->PSSetShaderResources(0, 1, nullSRV0);
+
+	// 메인 RT 선택: SceneHDR or BackBuffer
+	ID3D11RenderTargetView* mainRTV = m_pRenderTargetView;
+	if (mTone.useSceneHDR && mSceneHDRRTV.Get())
+		mainRTV = mSceneHDRRTV.Get();
+
+	ctx->OMSetRenderTargets(1, &mainRTV, m_pDepthStencilView);
+
+	// Clear
+	ctx->ClearRenderTargetView(mainRTV, clearColor);
 	ctx->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
 
 	// ───────────────────────────────────────────────────────────────
 	// 2) 공통 CB0(b0) / Blinn(b1) 업로드 (메인 카메라 기준)
@@ -234,10 +251,25 @@ void TutorialApp::OnRender()
 	// 9) 디버그(광원 화살표, 그리드)
 	RenderDebugPass(ctx, cb, dirV);
 
+
+
+
+
+	// SceneHDR -> BackBuffer ToneMap
+	if (mTone.useSceneHDR && mSceneHDRSRV.Get())
+	{
+		RenderToneMapPass(ctx);
+	}
+
 #ifdef _DEBUG
+	// ImGui는 무조건 백버퍼에 그리자 (톤맵 위에 UI 오버레이)
+	ID3D11RenderTargetView* bb = m_pRenderTargetView;
+	ctx->OMSetRenderTargets(1, &bb, nullptr);
 	UpdateImGUI();
 #endif
+
 	m_pSwapChain->Present(1, 0);
+
 }
 
 #ifdef _DEBUG

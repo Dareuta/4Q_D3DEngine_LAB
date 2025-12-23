@@ -84,6 +84,8 @@ void TutorialApp::UpdateImGUI()
 		static float   s_initKs = 0.5f, s_initShin = 32.0f;
 		static Vector3 s_initArrowPos{}, s_initArrowScale{};
 		static decltype(mPbr) s_initPbr{};
+		static decltype(mTone) s_initTone{};
+
 
 		if (!s_inited) {
 			s_inited = true;
@@ -95,6 +97,8 @@ void TutorialApp::UpdateImGUI()
 			s_initKa = m_Ka; s_initIa = m_Ia; s_initKs = m_Ks; s_initShin = m_Shininess;
 			s_initArrowPos = m_ArrowPos;      s_initArrowScale = m_ArrowScale;
 			s_initPbr = mPbr;
+			s_initTone = mTone;
+
 		}
 
 		// ─────────────────────────────────────────────────────────────
@@ -378,6 +382,25 @@ void TutorialApp::UpdateImGUI()
 
 			ImGui::ColorEdit3(u8"Env Spec Color", (float*)&mPbr.envSpecColor);
 			ImGui::SliderFloat(u8"Env Spec Intensity", &mPbr.envSpecIntensity, 0.0f, 3.0f, "%.3f");
+
+			if (ImGui::CollapsingHeader(u8"톤매핑(Tone Mapping) - HDR -> LDR", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ImGui::Checkbox(u8"SceneHDR 사용(HDR RT로 렌더)", &mTone.useSceneHDR);
+				ImGui::Checkbox(u8"ToneMap 적용(Enable)", &mTone.enable);
+
+				ImGui::SliderFloat(u8"Exposure (EV)", &mTone.exposureEV, -8.0f, 8.0f, "%.2f");
+
+				const char* ops[] = { "None", "Reinhard", "ACES(Fitted)" };
+				ImGui::Combo(u8"Operator", &mTone.operatorId, ops, IM_ARRAYSIZE(ops));
+
+				ImGui::SliderFloat(u8"Gamma", &mTone.gamma, 1.0f, 3.0f, "%.2f");
+
+				if (ImGui::Button(u8"ToneMap 초기화(Reset)"))
+				{
+					mTone = s_initTone;
+				}
+			}
+
 		}
 
 		// ─────────────────────────────────────────────────────────────

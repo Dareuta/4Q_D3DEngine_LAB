@@ -137,6 +137,11 @@ private:
 		const Matrix& world,
 		const ConstantBuffer& cb);
 
+
+
+	bool CreateSceneHDRResources(ID3D11Device* dev);	
+	void RenderToneMapPass(ID3D11DeviceContext* ctx);
+
 	//==========================================================================================
 	// D3D 핵심 객체
 	//==========================================================================================
@@ -476,4 +481,42 @@ private:
 
 	bool LoadIBLSet(int idx);
 	static UINT GetMipCountFromSRV(ID3D11ShaderResourceView* srv);
+	// ============================================================
+// ToneMapping / SceneHDR
+// ============================================================
+
+
+	
+
+	// ---- HDR Scene RenderTarget (R16G16B16A16_FLOAT) ----
+	Microsoft::WRL::ComPtr<ID3D11Texture2D>          mSceneHDRTex;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   mSceneHDRRTV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mSceneHDRSRV;
+
+	// ---- ToneMap shaders/resources (fullscreen pass) ----
+	Microsoft::WRL::ComPtr<ID3D11VertexShader>       mVS_ToneMap;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>        mPS_ToneMap;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>             mCB_ToneMap;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState>       mSamToneMapClamp;
+
+	// ---- CB for ToneMap (b10) ----
+	// NOTE: constant buffer는 16바이트 정렬/크기 맞춰야 함.
+	struct CB_ToneMap
+	{
+		float    exposureEV;   // exp2(EV)
+		float    gamma;        // 보통 2.2
+		uint32_t operatorId;   // 0=None, 1=Reinhard, 2=ACES(Fitted)
+		uint32_t flags;        // bit0: apply gamma
+	};
+
+	// ---- UI/Settings ----
+	struct ToneMapSettings
+	{
+		bool  useSceneHDR = true;   // true면 메인 렌더를 SceneHDR로
+		bool  enable = true;   // true면 톤맵 패스 수행
+		int   operatorId = 2;      // 0/1/2
+		float exposureEV = 0.0f;   // -8~+8 정도
+		float gamma = 2.2f;   // 1.0~3.0
+	};
+	ToneMapSettings mTone;
 };

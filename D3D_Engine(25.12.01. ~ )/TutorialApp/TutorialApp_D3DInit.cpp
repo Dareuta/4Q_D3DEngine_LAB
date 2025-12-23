@@ -3,6 +3,9 @@
 #include "../../D3D_Core/pch.h"
 #include "TutorialApp.h"
 
+
+
+
 bool TutorialApp::InitD3D()
 {
 	HRESULT hr = 0;
@@ -89,4 +92,31 @@ void TutorialApp::UninitD3D()
 	SAFE_RELEASE(m_pDeviceContext);
 	SAFE_RELEASE(m_pSwapChain);
 	SAFE_RELEASE(m_pDevice);
+}
+
+bool TutorialApp::CreateSceneHDRResources(ID3D11Device* dev)
+{
+	mSceneHDRSRV.Reset();
+	mSceneHDRRTV.Reset();
+	mSceneHDRTex.Reset();
+
+	D3D11_TEXTURE2D_DESC td{};
+	td.Width = m_ClientWidth;
+	td.Height = m_ClientHeight;
+	td.MipLevels = 1;
+	td.ArraySize = 1;
+	td.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	td.SampleDesc.Count = 1;
+	td.Usage = D3D11_USAGE_DEFAULT;
+	td.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+	dev->CreateTexture2D(&td, nullptr, mSceneHDRTex.GetAddressOf());
+	dev->CreateRenderTargetView(mSceneHDRTex.Get(), nullptr, mSceneHDRRTV.GetAddressOf());
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC sd{};
+	sd.Format = td.Format;
+	sd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	sd.Texture2D.MipLevels = 1;
+	dev->CreateShaderResourceView(mSceneHDRTex.Get(), &sd, mSceneHDRSRV.GetAddressOf());
+	return true;
 }
