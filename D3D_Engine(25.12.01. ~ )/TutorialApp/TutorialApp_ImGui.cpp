@@ -113,7 +113,7 @@ void TutorialApp::UpdateImGUI()
 				ImGui::SliderAngle(u8"Yaw (좌/우)", &m_LightYaw, -180.0f, 180.0f);
 				ImGui::SliderAngle(u8"Pitch (상/하)", &m_LightPitch, -89.0f, 89.0f);
 				ImGui::ColorEdit3(u8"색상(Color)", (float*)&m_LightColor);
-				ImGui::SliderFloat(u8"강도(Intensity)", &m_LightIntensity, 0.0f, 5.0f);
+				ImGui::DragFloat(u8"강도(Intensity)", &m_LightIntensity, 0.1f, 0.0f, 200.0f, "%.3f");
 
 				if (ImGui::Button(u8"조명 값 초기화"))
 				{
