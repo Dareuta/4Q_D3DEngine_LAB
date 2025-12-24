@@ -414,6 +414,8 @@ void TutorialApp::UpdateImGUI()
 				DirToYawPitch(dirUI, m_LightYaw, m_LightPitch);
 			}
 
+			ImGui::Checkbox(u8"디렉셔널 라이트 사용##dir", &mDbg.dirLightEnable);
+
 			// yaw/pitch는 "보조"로 남기기 (원하면 접어두기)
 			if (ImGui::CollapsingHeader(u8"Yaw/Pitch (보조 컨트롤)"))
 			{

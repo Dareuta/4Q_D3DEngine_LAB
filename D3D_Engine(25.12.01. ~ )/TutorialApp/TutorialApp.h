@@ -380,6 +380,8 @@ private:
 		bool showShadowWindow = true;
 		bool showLightWindow = true;
 
+		bool dirLightEnable = true; // 디렉셔널 라이트 On/Off (vLightColor.w)
+
 		bool sortTransparent = true;
 	};
 

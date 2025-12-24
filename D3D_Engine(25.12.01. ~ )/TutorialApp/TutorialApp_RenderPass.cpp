@@ -736,7 +736,7 @@ void TutorialApp::RenderDebugPass(
 {
 	//=============================================
 
-	if (mDbg.showLightArrow)
+	if (mDbg.showLightArrow && mDbg.dirLightEnable)
 	{
 		using namespace DirectX::SimpleMath;
 
