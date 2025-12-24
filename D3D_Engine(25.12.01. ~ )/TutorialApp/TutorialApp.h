@@ -356,7 +356,7 @@ private:
 		bool disableSpecular = false;
 		bool disableEmissive = false;
 
-		bool  forceAlphaClip = true; // 테스트 강제
+		bool  forceAlphaClip = true; 
 		bool  showGrid = true;
 
 		float alphaCut = 0.4f;
@@ -367,11 +367,19 @@ private:
 		float toonSpecBoost = 1.0f;
 		float toonShadowMin = 0.02f;
 
-		bool useDeferred = false;
-		bool showGBuffer = false;      // ImGui 썸네일
-		bool showGBufferFS = false;    // 풀스크린 디버그
-		int  gbufferMode = 2;          // 1..4
+		bool useDeferred = true;
+
+		bool showDeferredUI = true; 
+		bool showGBuffer = true;    
+
+		bool showGBufferFS = false;
+		int  gbufferMode = 0;
 		float gbufferPosRange = 200.0f;
+
+		bool showShadowWindow = true;
+		bool showLightWindow = true;
+		
+		bool sortTransparent = true;
 	};
 
 	static Matrix ComposeSRT(const XformUI& xf)

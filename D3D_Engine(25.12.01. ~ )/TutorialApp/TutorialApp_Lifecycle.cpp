@@ -217,17 +217,6 @@ void TutorialApp::OnRender()
 		ctx->PSSetShaderResources(5, 1, &shSRV);
 	}
 
-	//if (m_pSkySRV)
-	//{
-	//	ID3D11ShaderResourceView* env = m_pSkySRV;
-	//	ctx->PSSetShaderResources(7, 1, &env);
-	//}
-	//if (m_pSkySampler)
-	//{
-	//	ID3D11SamplerState* samp = m_pSkySampler;
-	//	ctx->PSSetSamplers(3, 1, &samp);
-	//}
-
 	// === Toon ramp bind (PS: t6/b7) ===
 	{
 		//툰 셰이딩 바인드
@@ -281,11 +270,11 @@ void TutorialApp::OnRender()
 		// 3) Sky는 lighting 후에 (네 셰이더는 geometry 없으면 검정 뿌림)
 		RenderSkyPass(ctx, viewNoTrans);
 
+		// 5) Debug
+		RenderDebugPass(ctx, cb, dirV);
 		// 4) Transparent는 마지막에 forward로 얹기
 		RenderTransparentPass(ctx, cb, eye);
 
-		// 5) Debug
-		RenderDebugPass(ctx, cb, dirV);
 	}
 	else
 	{
@@ -293,8 +282,8 @@ void TutorialApp::OnRender()
 		RenderSkyPass(ctx, viewNoTrans);
 		RenderOpaquePass(ctx, cb, eye);
 		RenderCutoutPass(ctx, cb, eye);
-		RenderTransparentPass(ctx, cb, eye);
 		RenderDebugPass(ctx, cb, dirV);
+		RenderTransparentPass(ctx, cb, eye);
 	}
 
 	// ToneMap

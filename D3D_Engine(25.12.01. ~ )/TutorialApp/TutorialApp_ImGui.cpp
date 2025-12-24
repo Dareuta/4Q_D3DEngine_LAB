@@ -61,6 +61,34 @@ static void AnimUI(const char* label,
 
 void TutorialApp::UpdateImGUI()
 {
+	// 스냅샷 1회 저장
+	static bool s_inited = false;
+	static double s_initAnimT = 0.0;
+	static float  s_initAnimSpeed = 1.0f;
+	static Vector3 s_initCubePos{}, s_initCubeScale{};
+	static float   s_initSpin = 0.0f, s_initFov = 60.0f, s_initNear = 0.1f, s_initFar = 1.0f;
+	static Vector3 s_initLightColor{};
+	static float   s_initLightYaw = 0.0f, s_initLightPitch = 0.0f, s_initLightIntensity = 1.0f;
+	static Vector3 s_initKa{}, s_initIa{};
+	static float   s_initKs = 0.5f, s_initShin = 32.0f;
+	static Vector3 s_initArrowPos{}, s_initArrowScale{};
+	static decltype(mPbr) s_initPbr{};
+	static decltype(mTone) s_initTone{};
+
+
+	if (!s_inited) {
+		s_inited = true;
+		s_initAnimT = mAnimT;
+		s_initAnimSpeed = mAnimSpeed;
+		s_initCubePos = cubeTransformA;   s_initCubeScale = cubeScale;   s_initSpin = spinSpeed;
+		s_initFov = m_FovDegree;          s_initNear = m_Near;           s_initFar = m_Far;
+		s_initLightColor = m_LightColor;  s_initLightYaw = m_LightYaw;   s_initLightPitch = m_LightPitch; s_initLightIntensity = m_LightIntensity;
+		s_initKa = m_Ka; s_initIa = m_Ia; s_initKs = m_Ks; s_initShin = m_Shininess;
+		s_initArrowPos = m_ArrowPos;      s_initArrowScale = m_ArrowScale;
+		s_initPbr = mPbr;
+		s_initTone = mTone;
+	}
+
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
@@ -71,114 +99,6 @@ void TutorialApp::UpdateImGUI()
 		// 상단 상태
 		ImGui::Text("FPS: %.1f (%.3f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 		ImGui::Separator();
-
-		// 스냅샷 1회 저장
-		static bool s_inited = false;
-		static double s_initAnimT = 0.0;
-		static float  s_initAnimSpeed = 1.0f;
-		static Vector3 s_initCubePos{}, s_initCubeScale{};
-		static float   s_initSpin = 0.0f, s_initFov = 60.0f, s_initNear = 0.1f, s_initFar = 1.0f;
-		static Vector3 s_initLightColor{};
-		static float   s_initLightYaw = 0.0f, s_initLightPitch = 0.0f, s_initLightIntensity = 1.0f;
-		static Vector3 s_initKa{}, s_initIa{};
-		static float   s_initKs = 0.5f, s_initShin = 32.0f;
-		static Vector3 s_initArrowPos{}, s_initArrowScale{};
-		static decltype(mPbr) s_initPbr{};
-		static decltype(mTone) s_initTone{};
-
-
-		if (!s_inited) {
-			s_inited = true;
-			s_initAnimT = mAnimT;
-			s_initAnimSpeed = mAnimSpeed;
-			s_initCubePos = cubeTransformA;   s_initCubeScale = cubeScale;   s_initSpin = spinSpeed;
-			s_initFov = m_FovDegree;          s_initNear = m_Near;           s_initFar = m_Far;
-			s_initLightColor = m_LightColor;  s_initLightYaw = m_LightYaw;   s_initLightPitch = m_LightPitch; s_initLightIntensity = m_LightIntensity;
-			s_initKa = m_Ka; s_initIa = m_Ia; s_initKs = m_Ks; s_initShin = m_Shininess;
-			s_initArrowPos = m_ArrowPos;      s_initArrowScale = m_ArrowScale;
-			s_initPbr = mPbr;
-			s_initTone = mTone;
-
-		}
-
-		// ─────────────────────────────────────────────────────────────
-		// 조명/그림자
-		// ─────────────────────────────────────────────────────────────
-		if (ImGui::Begin(u8"조명/그림자(Light & Shadow)"))
-		{
-			// ── Lighting ────────────────────────────────────────────────
-			ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
-			if (ImGui::CollapsingHeader(u8"조명(Lighting)"))
-			{
-				ImGui::SliderAngle(u8"Yaw (좌/우)", &m_LightYaw, -180.0f, 180.0f);
-				ImGui::SliderAngle(u8"Pitch (상/하)", &m_LightPitch, -89.0f, 89.0f);
-				ImGui::ColorEdit3(u8"색상(Color)", (float*)&m_LightColor);
-				ImGui::DragFloat(u8"강도(Intensity)", &m_LightIntensity, 0.1f, 0.0f, 200.0f, "%.3f");
-
-				if (ImGui::Button(u8"조명 값 초기화"))
-				{
-					m_LightColor = s_initLightColor;
-					m_LightYaw = s_initLightYaw;
-					m_LightPitch = s_initLightPitch;
-					m_LightIntensity = s_initLightIntensity;
-				}
-			}
-
-			// ── ShadowMap Preview / Grid ────────────────────────────────
-			if (ImGui::CollapsingHeader(u8"그림자(Shadow)"), ImGuiTreeNodeFlags_DefaultOpen)
-			{
-				ImGui::Checkbox(u8"섀도우맵 미리보기(Show ShadowMap)", &mShUI.showSRV);
-				ImGui::Checkbox(u8"그리드 표시(Show Grid)", &mDbg.showGrid);
-				ImGui::Checkbox(u8"직교 투영(Ortho)", &mShUI.useOrtho);
-				ImGui::Checkbox(u8"카메라 추적(Follow Camera)", &mShUI.followCamera);
-
-				if (mShUI.showSRV) {
-					ImTextureID id = (ImTextureID)mShadowSRV.Get();
-					if (id) ImGui::Image(id, ImVec2(256, 256), ImVec2(0, 0), ImVec2(1, 1));
-					else    ImGui::TextUnformatted("Shadow SRV is null");
-				}
-
-				if (ImGui::CollapsingHeader(u8"고급 옵션(Details)"))
-				{
-					ImGui::SeparatorText(u8"카메라 기준(locked)");
-
-					ImGui::DragFloat(u8"Focus 거리(FocusDist)", &mShUI.focusDist, 0.1f, 0.1f, 5000.0f);
-					ImGui::DragFloat(u8"Light 거리(LightDist)", &mShUI.lightDist, 0.1f, 0.1f, 10000.0f);
-					ImGui::DragFloat(u8"커버 마진(Margin)", &mShUI.coverMargin, 0.01f, 1.0f, 2.0f);
-
-					ImGui::SeparatorText("DepthOnly");
-					ImGui::SliderFloat(u8"알파 컷(AlphaCut)", &mShadowAlphaCut, 0.0f, 1.0f, "%.3f");
-
-					ImGui::SeparatorText("Bias");
-					ImGui::DragFloat(u8"비교 Bias(CmpBias)", &mShadowCmpBias, 0.0001f, 0.0f, 0.02f, "%.5f");
-					ImGui::DragInt(u8"DepthBias", (int*)&mShadowDepthBias, 1, 0, 200000);
-					ImGui::DragFloat(u8"Slope Bias", &mShadowSlopeBias, 0.01f, 0.0f, 32.0f, "%.2f");
-
-					ImGui::SeparatorText(u8"섀도우맵 해상도(ShadowMap Size)");
-					static int resIdx =
-						(mShadowW >= 4096) ? 3 :
-						(mShadowW >= 2048) ? 2 :
-						(mShadowW >= 1024) ? 1 : 0;
-					const char* kResItems[] = { "512", "1024", "2048", "4096" };
-					ImGui::Combo(u8"해상도(Resolution)", &resIdx, kResItems, IM_ARRAYSIZE(kResItems));
-
-					ImGui::SeparatorText(u8"계산값(읽기 전용)");
-					ImGui::Text("FovY: %.1f deg", DirectX::XMConvertToDegrees(mShadowFovY));
-					ImGui::Text("Near/Far: %.3f / %.3f", mShadowNear, mShadowFar);
-
-					if (ImGui::Button(u8"적용(ShadowMap 재생성)"))
-					{
-						int sz = 512;
-						if (resIdx == 1) sz = 1024;
-						else if (resIdx == 2) sz = 2048;
-						else if (resIdx == 3) sz = 4096;
-						mShadowW = mShadowH = sz;
-						CreateShadowResources(m_pDevice);
-					}
-				}
-			}
-		}
-		ImGui::End();
 
 		// ─────────────────────────────────────────────────────────────
 		// 카메라
@@ -408,9 +328,19 @@ void TutorialApp::UpdateImGUI()
 		// ─────────────────────────────────────────────────────────────
 		if (ImGui::CollapsingHeader(u8"렌더링/디버그(Render Toggles)"))
 		{
+			ImGui::Checkbox(u8"Light Window", &mDbg.showLightWindow);
+			ImGui::Checkbox(u8"Shadow Window", &mDbg.showShadowWindow);
+			ImGui::Checkbox(u8"GBuffer Window", &mDbg.showGBuffer);
+
+			ImGui::Separator();
+
 			ImGui::Checkbox("Skybox", &mDbg.showSky);
 			ImGui::Checkbox("Opaque Pass", &mDbg.showOpaque);
-			ImGui::Checkbox("Transparent Pass", &mDbg.showTransparent);
+			ImGui::Checkbox("Transparent Pass", &mDbg.showTransparent);			
+			ImGui::SameLine();
+			ImGui::Checkbox("Sort", &mDbg.sortTransparent); 
+
+
 
 			ImGui::Separator();
 
@@ -427,38 +357,6 @@ void TutorialApp::UpdateImGUI()
 			ImGui::Checkbox(u8"강제 알파컷(Force AlphaClip)", &mDbg.forceAlphaClip);
 			ImGui::DragFloat("AlphaCut", &mDbg.alphaCut, 0.01f, 0.0f, 1.0f);
 
-
-			ImGui::Checkbox("Deferred Shading", &mDbg.useDeferred);
-			ImGui::Checkbox("Show GBuffer Thumbnails", &mDbg.showGBuffer);
-			ImGui::Checkbox("Fullscreen GBuffer Debug", &mDbg.showGBufferFS);
-
-			if (mDbg.showGBufferFS)
-			{
-				const char* modes[] = { "WorldPos", "Normal", "BaseColor", "Metal/Rough" };
-				int m = mDbg.gbufferMode - 1;
-				ImGui::Combo("GBuffer Mode", &m, modes, IM_ARRAYSIZE(modes));
-				mDbg.gbufferMode = m + 1;
-				ImGui::DragFloat("WorldPos Range", &mDbg.gbufferPosRange, 1.0f, 1.0f, 5000.0f);
-			}
-
-			if (mDbg.showGBuffer && mGBufferSRV[0])
-			{
-				ImVec2 sz(220, 140);
-
-				ImGui::Text("G0 WorldPos (raw float, may saturate)");
-				ImGui::Image((ImTextureID)mGBufferSRV[0].Get(), sz);
-
-				ImGui::Text("G1 WorldNormal (0..1)");
-				ImGui::Image((ImTextureID)mGBufferSRV[1].Get(), sz);
-
-				ImGui::Text("G2 BaseColor");
-				ImGui::Image((ImTextureID)mGBufferSRV[2].Get(), sz);
-
-				ImGui::Text("G3 Metallic/Roughness");
-				ImGui::Image((ImTextureID)mGBufferSRV[3].Get(), sz);
-			}
-
-
 			if (ImGui::Button(u8"디버그 초기화(Reset)")) {
 				mDbg = DebugToggles();
 			}
@@ -468,6 +366,232 @@ void TutorialApp::UpdateImGUI()
 	}
 
 	ImGui::End();
+
+
+	if (mDbg.showLightWindow)
+	{
+		if (ImGui::Begin(u8"조명(Light)", &mDbg.showLightWindow))
+		{
+			auto NormalizeSafe = [](Vector3 v, const Vector3& fallback)
+				{
+					float len2 = v.x * v.x + v.y * v.y + v.z * v.z;
+					if (len2 < 1e-8f) return fallback;
+					float invLen = 1.0f / sqrtf(len2);
+					return Vector3(v.x * invLen, v.y * invLen, v.z * invLen);
+				};
+
+			auto YawPitchToDir = [](float yaw, float pitch)
+				{
+					float cy = cosf(yaw), sy = sinf(yaw);
+					float cp = cosf(pitch), sp = sinf(pitch);
+					return Vector3(sy * cp, sp, cy * cp); // +Z forward 기준
+				};
+
+			auto DirToYawPitch = [&NormalizeSafe](const Vector3& d, float& yaw, float& pitch)
+				{
+					Vector3 n = NormalizeSafe(d, Vector3(0, -1, 0));
+					pitch = asinf(std::clamp(n.y, -1.0f, 1.0f));
+					if (fabsf(n.x) + fabsf(n.z) > 1e-5f)
+						yaw = atan2f(n.x, n.z);
+				};
+
+			Vector3 dirUI = YawPitchToDir(m_LightYaw, m_LightPitch);
+
+			ImGui::TextDisabled(u8"방향 벡터 편집(자동 정규화).");
+			if (ImGui::DragFloat3(u8"Light Dir (x,y,z)", (float*)&dirUI, 0.01f, -1.0f, 1.0f, "%.3f"))
+			{
+				dirUI = NormalizeSafe(dirUI, Vector3(0, -1, 0));
+				DirToYawPitch(dirUI, m_LightYaw, m_LightPitch);
+			}
+
+			ImGui::SameLine();
+			if (ImGui::Button(u8"Invert"))
+			{
+				dirUI = Vector3(-dirUI.x, -dirUI.y, -dirUI.z);
+				DirToYawPitch(dirUI, m_LightYaw, m_LightPitch);
+			}
+
+			// yaw/pitch는 "보조"로 남기기 (원하면 접어두기)
+			if (ImGui::CollapsingHeader(u8"Yaw/Pitch (보조 컨트롤)"))
+			{
+				ImGui::SliderAngle(u8"Yaw", &m_LightYaw, -180.0f, 180.0f);
+				ImGui::SliderAngle(u8"Pitch", &m_LightPitch, -89.0f, 89.0f);
+			}
+
+		}
+		ImGui::End();
+	}
+
+	// ─────────────────────────────────────────────────────────────
+	// 그림자
+	// ─────────────────────────────────────────────────────────────
+	if (mDbg.showShadowWindow)
+	{
+		if (ImGui::Begin(u8"그림자(Shadow)", &mDbg.showShadowWindow))
+		{
+			// ── ShadowMap Preview / Grid ────────────────────────────────
+			if (ImGui::CollapsingHeader(u8"그림자(Shadow)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ImGui::Checkbox(u8"섀도우맵 미리보기(Show ShadowMap)", &mShUI.showSRV);
+				ImGui::Checkbox(u8"그리드 표시(Show Grid)", &mDbg.showGrid);
+				ImGui::Checkbox(u8"직교 투영(Ortho)", &mShUI.useOrtho);
+				ImGui::Checkbox(u8"카메라 추적(Follow Camera)", &mShUI.followCamera);
+
+				if (mShUI.showSRV) {
+					ImTextureID id = (ImTextureID)mShadowSRV.Get();
+					if (id) ImGui::Image(id, ImVec2(256, 256), ImVec2(0, 0), ImVec2(1, 1));
+					else    ImGui::TextUnformatted("Shadow SRV is null");
+				}
+
+				if (ImGui::CollapsingHeader(u8"고급 옵션(Details)"))
+				{
+					ImGui::SeparatorText(u8"카메라 기준(locked)");
+
+					ImGui::DragFloat(u8"Focus 거리(FocusDist)", &mShUI.focusDist, 0.1f, 0.1f, 5000.0f);
+					ImGui::DragFloat(u8"Light 거리(LightDist)", &mShUI.lightDist, 0.1f, 0.1f, 10000.0f);
+					ImGui::DragFloat(u8"커버 마진(Margin)", &mShUI.coverMargin, 0.01f, 1.0f, 2.0f);
+
+					ImGui::SeparatorText("DepthOnly");
+					ImGui::SliderFloat(u8"알파 컷(AlphaCut)", &mShadowAlphaCut, 0.0f, 1.0f, "%.3f");
+
+					ImGui::SeparatorText("Bias");
+					ImGui::DragFloat(u8"비교 Bias(CmpBias)", &mShadowCmpBias, 0.0001f, 0.0f, 0.02f, "%.5f");
+					ImGui::DragInt(u8"DepthBias", (int*)&mShadowDepthBias, 1, 0, 200000);
+					ImGui::DragFloat(u8"Slope Bias", &mShadowSlopeBias, 0.01f, 0.0f, 32.0f, "%.2f");
+
+					ImGui::SeparatorText(u8"섀도우맵 해상도(ShadowMap Size)");
+					static int resIdx =
+						(mShadowW >= 4096) ? 3 :
+						(mShadowW >= 2048) ? 2 :
+						(mShadowW >= 1024) ? 1 : 0;
+					const char* kResItems[] = { "512", "1024", "2048", "4096" };
+					ImGui::Combo(u8"해상도(Resolution)", &resIdx, kResItems, IM_ARRAYSIZE(kResItems));
+
+					ImGui::SeparatorText(u8"계산값(읽기 전용)");
+					ImGui::Text("FovY: %.1f deg", DirectX::XMConvertToDegrees(mShadowFovY));
+					ImGui::Text("Near/Far: %.3f / %.3f", mShadowNear, mShadowFar);
+
+					if (ImGui::Button(u8"적용(ShadowMap 재생성)"))
+					{
+						int sz = 512;
+						if (resIdx == 1) sz = 1024;
+						else if (resIdx == 2) sz = 2048;
+						else if (resIdx == 3) sz = 4096;
+						mShadowW = mShadowH = sz;
+						CreateShadowResources(m_pDevice);
+					}
+				}
+			}
+		}
+
+		ImGui::End();
+	}
+
+
+	// =============================================================
+	// G-Buffer Thumbnails Window (분리 창)
+	// =============================================================
+	if (mDbg.showGBuffer)
+	{
+		// ─────────────────────────────────────────────────────────────
+		// Deferred / G-Buffer
+		// ─────────────────────────────────────────────────────────────
+
+
+		ImGui::SetNextWindowSize(ImVec2(520, 420), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin(u8"G-Buffer", &mDbg.showGBuffer))
+		{
+
+			if (ImGui::CollapsingHeader(u8"지연 셰이딩(Deferred) / G-Buffer", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ImGui::Checkbox("Deferred Shading (Opaque)##deferred", &mDbg.useDeferred);
+				ImGui::SameLine();
+				ImGui::TextDisabled(u8"(투명/머리카락은 마지막에 Forward Overlay)");
+
+				// 출력 선택: Final vs G-Buffer Debug
+				if (mDbg.useDeferred)
+				{
+					const char* outs[] = {
+						"Final Lighting",
+						"GBuffer: WorldPos",
+						"GBuffer: WorldNormal",
+						"GBuffer: BaseColor",
+						"GBuffer: Metal/Rough",
+					};
+
+					int view = (mDbg.showGBufferFS ? mDbg.gbufferMode : 0); // 0..4
+					if (ImGui::Combo("Output##gbuf_out", &view, outs, IM_ARRAYSIZE(outs)))
+					{
+						if (view == 0)
+						{
+							mDbg.showGBufferFS = false;
+							mDbg.gbufferMode = 0;
+						}
+						else
+						{
+							mDbg.showGBufferFS = true;
+							mDbg.gbufferMode = view; // 1..4
+						}
+					}
+
+					if (mDbg.showGBufferFS && mDbg.gbufferMode == 1)
+						ImGui::DragFloat("WorldPos Range##gbuf_pos", &mDbg.gbufferPosRange, 1.0f, 1.0f, 5000.0f);
+
+
+
+
+				}
+				else
+				{
+					ImGui::TextDisabled(u8"Deferred가 꺼져있습니다.");
+
+				}
+			}
+			
+			// SRV 없으면 걍 안내만
+			if (!mGBufferSRV[0] || !mGBufferSRV[1] || !mGBufferSRV[2] || !mGBufferSRV[3])
+			{
+				ImGui::TextDisabled(u8"GBuffer SRV is null");
+			}
+			else
+			{
+				// 창 폭에 맞춰 썸네일 크기 자동 계산 (2열)
+				float w = ImGui::GetContentRegionAvail().x;
+				float thumbW = (w - 12.0f) * 0.5f;
+				float thumbH = thumbW * (140.0f / 220.0f); // 기존 비율 대충 유지
+				ImVec2 sz(thumbW, thumbH);
+
+				auto Thumb = [&](const char* title, int idx, const char* hint)
+					{
+						ImGui::TextUnformatted(title);
+						if (hint) { ImGui::SameLine(); ImGui::TextDisabled(hint); }
+						ImGui::Image((ImTextureID)mGBufferSRV[idx].Get(), sz);
+					};
+
+				if (ImGui::BeginTable("gbuf_tbl", 2, ImGuiTableFlags_SizingStretchSame))
+				{
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					Thumb("G0 WorldPos", 0, "(raw)");
+					ImGui::TableSetColumnIndex(1);
+					Thumb("G1 WorldNormal", 1, "(raw -1..1)");
+
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					Thumb("G2 BaseColor", 2, nullptr);
+					ImGui::TableSetColumnIndex(1);
+					Thumb("G3 Metal/Rough", 3, "(R/G)");
+
+					ImGui::EndTable();
+				}
+
+				ImGui::Separator();
+			}
+		}
+		ImGui::End();
+	}
+
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
 }

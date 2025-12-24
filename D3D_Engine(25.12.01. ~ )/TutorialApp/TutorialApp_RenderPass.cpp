@@ -7,10 +7,10 @@
 void TutorialApp::RenderShadowPass_Main(
 	ID3D11DeviceContext* ctx,
 	ConstantBuffer& baseCB) {
-	
+
 
 	//=============================================
-	
+
 	ID3D11DepthStencilState* dssBefore = nullptr;
 	UINT dssRefBefore = 0;
 	ctx->OMGetDepthStencilState(&dssBefore, &dssRefBefore);
@@ -84,11 +84,18 @@ void TutorialApp::RenderShadowPass_Main(
 				}
 			};
 
-		if (mTreeX.enabled) { Matrix W = ComposeSRT(mTreeX);  DrawDepth_Static(gTree, gTreeMtls, W, false); DrawDepth_Static(gTree, gTreeMtls, W, true); }
-		if (mCharX.enabled) { Matrix W = ComposeSRT(mCharX);  DrawDepth_Static(gChar, gCharMtls, W, false); DrawDepth_Static(gChar, gCharMtls, W, true); }
-		if (mZeldaX.enabled) { Matrix W = ComposeSRT(mZeldaX); DrawDepth_Static(gZelda, gZeldaMtls, W, false); DrawDepth_Static(gZelda, gZeldaMtls, W, true); }
+		auto DrawShadowStatic = [&](auto& X, auto& mesh, auto& mtls)
+			{
+				if (!X.enabled) return;
+				Matrix W = ComposeSRT(X);
+				DrawDepth_Static(mesh, mtls, W, false);               // opaque
+				if (mDbg.showTransparent) DrawDepth_Static(mesh, mtls, W, true); // alpha-cut
+			};
 
-		if (mFemaleX.enabled) { Matrix W = ComposeSRT(mFemaleX); DrawDepth_Static(gFemale, gFemaleMtls, W, false); DrawDepth_Static(gFemale, gFemaleMtls, W, true); }
+		DrawShadowStatic(mTreeX, gTree, gTreeMtls);
+		DrawShadowStatic(mCharX, gChar, gCharMtls);
+		DrawShadowStatic(mZeldaX, gZelda, gZeldaMtls);
+		DrawShadowStatic(mFemaleX, gFemale, gFemaleMtls);
 
 		if (mBoxRig && mBoxX.enabled)
 		{
@@ -168,7 +175,7 @@ void TutorialApp::RenderShadowPass_Main(
 
 	ctx->RSSetState(rsBeforeShadow);
 	SAFE_RELEASE(rsBeforeShadow);
-	
+
 	ctx->OMSetBlendState(bsBefore, bfBefore, maskBefore);
 	ctx->OMSetDepthStencilState(dssBefore, dssRefBefore);
 	SAFE_RELEASE(bsBefore);
@@ -207,8 +214,9 @@ void TutorialApp::RenderGBufferPass(ID3D11DeviceContext* ctx, ConstantBuffer& ba
 		if (mFemaleX.enabled)DrawStaticOpaqueOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
 	}
 
-	// alpha cut도 GBuffer에 들어가야 “보이는 픽셀만” 남음
-	if (mDbg.forceAlphaClip)
+
+	if (mDbg.forceAlphaClip && mDbg.showTransparent)
+
 	{
 		if (mTreeX.enabled)   DrawStaticAlphaCutOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
 		if (mCharX.enabled)   DrawStaticAlphaCutOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
@@ -238,7 +246,7 @@ void TutorialApp::RenderDeferredLightPass(ID3D11DeviceContext* ctx)
 
 	ctx->VSSetShader(mVS_DeferredLight.Get(), nullptr, 0);
 	ctx->PSSetShader(mPS_DeferredLight.Get(), nullptr, 0);
-	
+
 	ID3D11ShaderResourceView* srvs[6] =
 	{
 		mGBufferSRV[0].Get(), // t0 worldpos
@@ -277,7 +285,7 @@ void TutorialApp::RenderDeferredLightPass(ID3D11DeviceContext* ctx)
 	ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0); // 또는 nullptr로 기본 복구
 
 	ID3D11ShaderResourceView* nullIBL[3] = { nullptr,nullptr,nullptr };
-	ctx->PSSetShaderResources(7, 3, nullIBL);		
+	ctx->PSSetShaderResources(7, 3, nullIBL);
 }
 
 void TutorialApp::RenderGBufferDebugPass(ID3D11DeviceContext* ctx)
@@ -286,7 +294,7 @@ void TutorialApp::RenderGBufferDebugPass(ID3D11DeviceContext* ctx)
 
 	float bf[4] = { 0,0,0,0 };
 	ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
-	
+
 	ctx->OMSetDepthStencilState(m_pDSS_Disabled ? m_pDSS_Disabled : nullptr, 0);
 
 	ctx->IASetInputLayout(nullptr);
@@ -564,51 +572,141 @@ void TutorialApp::RenderCutoutPass(
 void TutorialApp::RenderTransparentPass(
 	ID3D11DeviceContext* ctx,
 	ConstantBuffer& baseCB,
-	const DirectX::SimpleMath::Vector3& eye) {
-	//=============================================
+	const DirectX::SimpleMath::Vector3& eye)
+{
+	// 투명 패스 자체를 끌 때 / 알파컷 강제일 때는 할 게 없음
+	if (!mDbg.showTransparent) return;
+	if (mDbg.forceAlphaClip)   return; // 알파블렌드 안 쓸 거면 패스 스킵
 
+	// 상태 백업
 	ID3D11BlendState* oldBS = nullptr; float oldBF[4]; UINT oldSM = 0xFFFFFFFF;
 	ctx->OMGetBlendState(&oldBS, oldBF, &oldSM);
 	ID3D11DepthStencilState* oldDSS = nullptr; UINT oldSR = 0;
 	ctx->OMGetDepthStencilState(&oldDSS, &oldSR);
 
+	// 투명 상태 세팅 (이미 너 프로젝트에 있음)
 	float bf[4] = { 0,0,0,0 };
 	ctx->OMSetBlendState(m_pBS_Alpha, bf, 0xFFFFFFFF);
-	ctx->OMSetDepthStencilState(mDbg.depthWriteOff && m_pDSS_Disabled ? m_pDSS_Disabled : m_pDSS_Trans, 0);
+	//ctx->OMSetDepthStencilState(mDbg.depthWriteOff && m_pDSS_Disabled ? m_pDSS_Disabled : m_pDSS_Trans, 0);
+	ctx->OMSetDepthStencilState(m_pDSS_Trans, 0); // m_pDSS_Trans가 DepthRead(WriteOff)인지 꼭 확인
 
-	if (mDbg.showTransparent) {
-		BindStaticMeshPipeline(ctx);
-		if (mTreeX.enabled)  DrawStaticTransparentOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
-		if (mCharX.enabled)  DrawStaticTransparentOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
-		if (mZeldaX.enabled) DrawStaticTransparentOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
 
-		//if (mFemaleX.enabled) DrawStaticTransparentOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
+	// ---- 투명 큐 수집 ----
+	struct TItem
+	{
+		float keyZ;                  // view-space z (클수록 멀다)
+		std::function<void()> draw;  // 드로우 실행
+	};
 
-		if (mBoxRig && mBoxX.enabled) {
-			mBoxRig->DrawTransparentOnly(ctx, ComposeSRT(mBoxX),
-				view, m_Projection, m_pConstantBuffer, m_pUseCB,
-				baseCB.vLightDir, baseCB.vLightColor, eye,
-				m_Ka, m_Ks, m_Shininess, m_Ia,
-				mDbg.disableNormal, mDbg.disableSpecular, mDbg.disableEmissive);
-		}
-		if (mSkinRig && mSkinX.enabled) {
-			BindSkinnedMeshPipeline(ctx);
-			mSkinRig->DrawTransparentOnly(ctx, ComposeSRT(mSkinX),
-				view, m_Projection, m_pConstantBuffer, m_pUseCB, m_pBoneCB,
-				baseCB.vLightDir, baseCB.vLightColor, eye,
-				m_Ka, m_Ks, m_Shininess, m_Ia,
-				mDbg.disableNormal, mDbg.disableSpecular, mDbg.disableEmissive);
-			BindStaticMeshPipeline(ctx);
-		}
+	std::vector<TItem> q;
+	q.reserve(16);
+
+	auto ViewZ = [&](const DirectX::SimpleMath::Matrix& W)->float
+		{
+			const auto m_View = view;
+			using namespace DirectX::SimpleMath;
+			Vector3 p = W.Translation();                 // 오브젝트 중심(대충)
+			Vector3 vp = Vector3::Transform(p, m_View);    // view-space
+			return vp.z;
+		};
+
+	auto PushStatic = [&](const XformUI& X, StaticMesh& mesh, const std::vector<MaterialGPU>& mtls, bool usePBR)
+		{
+			if (!X.enabled) return;
+			DirectX::SimpleMath::Matrix W = ComposeSRT(X);
+			float z = ViewZ(W);
+
+			q.push_back(TItem{
+				z,
+				[this, ctx, &mesh, &mtls, W, &baseCB, usePBR]()
+				{
+					if (usePBR) BindStaticMeshPipeline_PBR(ctx);
+					else        BindStaticMeshPipeline(ctx);
+
+					DrawStaticTransparentOnly(ctx, mesh, mtls, W, baseCB);
+
+					if (usePBR) BindStaticMeshPipeline(ctx);
+				} });
+
+		};
+
+	auto PushBoxRig = [&]()
+		{
+			if (!mBoxRig || !mBoxX.enabled) return;
+			DirectX::SimpleMath::Matrix W = ComposeSRT(mBoxX);
+			float z = ViewZ(W);
+
+			q.push_back(TItem{
+				z,
+				[=,  &baseCB, &eye]()
+				{
+					mBoxRig->DrawTransparentOnly(ctx, W,
+						view, m_Projection, m_pConstantBuffer, m_pUseCB,
+						baseCB.vLightDir, baseCB.vLightColor, eye,
+						m_Ka, m_Ks, m_Shininess, m_Ia,
+						mDbg.disableNormal, mDbg.disableSpecular, mDbg.disableEmissive);
+
+					BindStaticMeshPipeline(ctx);
+				}
+				});
+		};
+
+	auto PushSkinRig = [&]()
+		{
+			if (!mSkinRig || !mSkinX.enabled) return;
+			DirectX::SimpleMath::Matrix W = ComposeSRT(mSkinX);
+			float z = ViewZ(W);
+
+			q.push_back(TItem{
+				z,
+				[=,  &baseCB, &eye]()
+				{
+					BindSkinnedMeshPipeline(ctx);
+					mSkinRig->DrawTransparentOnly(ctx, W,
+						view, m_Projection, m_pConstantBuffer, m_pUseCB, m_pBoneCB,
+						baseCB.vLightDir, baseCB.vLightColor, eye,
+						m_Ka, m_Ks, m_Shininess, m_Ia,
+						mDbg.disableNormal, mDbg.disableSpecular, mDbg.disableEmissive);
+
+					BindStaticMeshPipeline(ctx);
+				}
+				});
+		};
+
+	//  여기서 “투명 취급할 애들” 큐에 넣기
+	// (현재는 hasOpacity 서브메시들만 DrawStaticTransparentOnly가 그린다)
+	PushStatic(mTreeX, gTree, gTreeMtls, false);
+	PushStatic(mCharX, gChar, gCharMtls, false);
+	PushStatic(mZeldaX, gZelda, gZeldaMtls, false);
+
+	//  여자 모델(헤어 등) : PBR 켜져있으면 PBR 파이프라인로 투명 그리기
+	PushStatic(mFemaleX, gFemale, gFemaleMtls, mPbr.enable);
+
+	PushBoxRig();
+	PushSkinRig();
+
+	// ---- 소트 ----
+	if (mDbg.sortTransparent)
+	{
+		std::stable_sort(q.begin(), q.end(), [](const TItem& a, const TItem& b)
+			{
+				return a.keyZ > b.keyZ; // far -> near
+			});
 	}
 
+	// ---- 드로우 ----
+	for (auto& it : q)
+		it.draw();
+
+	// (선택) PBR이 t7~t9에 SRV 걸어놨을 수 있으니 깔끔하게 언바인드
+	ID3D11ShaderResourceView* nullIBL[3] = { nullptr,nullptr,nullptr };
+	ctx->PSSetShaderResources(7, 3, nullIBL);
+
+	// 상태 복구
 	ctx->OMSetBlendState(oldBS, oldBF, oldSM);
 	ctx->OMSetDepthStencilState(oldDSS, oldSR);
-	SAFE_RELEASE(oldBS); SAFE_RELEASE(oldDSS);
-
-
-
-	//=============================================
+	SAFE_RELEASE(oldBS);
+	SAFE_RELEASE(oldDSS);
 }
 
 //디버그(광원 화살표, 그리드)
@@ -670,7 +768,7 @@ void TutorialApp::RenderDebugPass(
 
 	if (mDbg.showGrid) {
 
-		
+
 		if (mCB_Shadow && mShadowSRV && mSamShadowCmp)
 		{
 			ID3D11Buffer* b6 = mCB_Shadow.Get();
