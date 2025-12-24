@@ -139,7 +139,7 @@ private:
 
 
 
-	bool CreateSceneHDRResources(ID3D11Device* dev);	
+	bool CreateSceneHDRResources(ID3D11Device* dev);
 	void RenderToneMapPass(ID3D11DeviceContext* ctx);
 
 	//==========================================================================================
@@ -202,8 +202,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mIBLPrefMDRSRV;  // spec prefiltered cube (mips!)
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mIBLPrefHDRSRV;  // spec prefiltered cube (mips!)
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mIBLBrdfSRV;  // BRDF LUT (2D)
-	
-	Microsoft::WRL::ComPtr<ID3D11SamplerState> mSamIBLClamp;       // PS s3
+
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> mSamIBLClamp;       // PS s3	
 
 	//==========================================================================================
 	// 메쉬 파이프라인 (정적)
@@ -450,7 +450,7 @@ private:
 
 
 	//==========================================================================================
-	
+
 	ID3D11PixelShader* m_pPBRPS = nullptr;
 	ID3D11Buffer* m_pPBRParamsCB = nullptr;
 
@@ -472,10 +472,10 @@ private:
 		float roughness = 0.5f;       // 0에 가까울수록 거울
 
 		Vector3 envDiffColor = { 1, 1, 1 };
-		float   envDiffIntensity = 1.0f;   
+		float   envDiffIntensity = 1.0f;
 
 		Vector3 envSpecColor = { 1, 1, 1 };
-		float   envSpecIntensity = 1.0f;   
+		float   envSpecIntensity = 1.0f;
 	} mPbr;
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> mCB_Proc;

@@ -100,16 +100,26 @@ float4 main(PS_INPUT input) : SV_Target
     // World-space basis (Normal/Tangent) + Normal Map 적용
     // ------------------------------------------------------------------------
     float3 Nw_base = normalize(input.NormalW);
-    float3 Tw = OrthonormalizeTangent(Nw_base, input.TangentW.xyz);
+
+    // 디퍼드 GBuffer VS와 동일하게: T 정규화 + B = cross(N,T)*handedness
+    float3 T = normalize(input.TangentW.xyz);
+    T = normalize(T - Nw_base * dot(T, Nw_base)); // Orthonormalize
+    float3 B = normalize(cross(Nw_base, T) * input.TangentW.w);
 
     float normalStrength = clamp(pParams.z, 0.0f, 2.0f);
-
     float3 Nw = Nw_base;
+
     if (pUseNormalTex != 0 && useNormal != 0)
     {
-        int flipGreen = (pParams.w > 0.5f) ? 1 : 0;
-        float3 nTex = ApplyNormalMapTS(Nw_base, Tw, input.TangentW.w, input.Tex, flipGreen);
-        Nw = normalize(lerp(Nw_base, nTex, normalStrength));
+        float3 nts = txNormal.Sample(samLinear, input.Tex).xyz * 2.0f - 1.0f;
+        if (pParams.w > 0.5f)
+            nts.y = -nts.y; // flip green 옵션
+
+        nts.xy *= normalStrength;
+        nts = normalize(nts);
+
+    // tangent-space -> world (row-combo 방식)
+        Nw = normalize(nts.x * T + nts.y * B + nts.z * Nw_base);
     }
 
     // ------------------------------------------------------------------------

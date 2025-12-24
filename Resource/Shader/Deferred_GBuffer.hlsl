@@ -75,20 +75,28 @@ struct VS_OUT
     float3 WorldPos : TEXCOORD0;
     float3 Nw : TEXCOORD1;
     float3 Tw : TEXCOORD2;
-    float3 Bw : TEXCOORD3;
+    float3 Bw : TEXCOORD3; 
     float2 UV : TEXCOORD4;
+    float TanSign : TEXCOORD5; // 추가
 };
 
 VS_OUT VS_Main(VS_IN i)
 {
     VS_OUT o;
-    float4 Pw = mul(float4(i.Pos, 1), World);
-    o.WorldPos = Pw.xyz;
+    float4 wpos = mul(float4(i.Pos, 1), World);
+    o.PosH = mul(mul(wpos, View), Projection);
+    o.WorldPos = wpos.xyz;
+    o.TanSign = i.Tan.w;
 
-    float3 Nw = mul(float4(i.Nor, 0), WorldInvTranspose).xyz;
+    float3 Nw = normalize(mul(float4(i.Nor, 0), WorldInvTranspose).xyz);
+
     float3 Tw = mul(float4(i.Tan.xyz, 0), World).xyz;
-    Nw = normalize(Nw);
     Tw = normalize(Tw);
+
+    // 포워드와 동일: tangent를 normal에 직교화
+    Tw = Tw - Nw * dot(Tw, Nw);
+    Tw = normalize(Tw);
+
     float3 Bw = normalize(cross(Nw, Tw) * i.Tan.w);
 
     o.Nw = Nw;
@@ -96,8 +104,6 @@ VS_OUT VS_Main(VS_IN i)
     o.Bw = Bw;
     o.UV = i.UV;
 
-    float4 Pv = mul(Pw, View);
-    o.PosH = mul(Pv, Projection);
     return o;
 }
 
@@ -125,7 +131,7 @@ PS_OUT PS_Main(VS_OUT i)
     // alpha cut (선택)
     if (useOpacity == 1u)
     {
-        float a = tOpacity.Sample(s0, i.UV).r;
+        float a = tOpacity.Sample(s0, i.UV).a;
         clip(a - alphaCut);
     }
 
@@ -144,24 +150,32 @@ PS_OUT PS_Main(VS_OUT i)
     if (pUseRoughTex != 0u && useEmissive == 1u)
         rough = tRoughness.Sample(s0, i.UV).r;
 
-    rough = clamp(rough, 0.02f, 1.0f);
+    rough = clamp(rough, 0.04f, 1.0f);
     metallic = saturate(metallic);
 
     // normal
-    float3 Nw = normalize(i.Nw);
+    float3 Nw_base = normalize(i.Nw);
+    float3 Nw = Nw_base;
+
     if (pUseNormalTex != 0u && useNormal == 1u)
     {
         float3 nts = DecodeNormalTS(tNormal.Sample(s0, i.UV).xyz);
-        nts.xy *= pParams.z; // strength
+        nts.xy *= pParams.z;
         nts = normalize(nts);
 
-        float3x3 TBN = float3x3(normalize(i.Tw), normalize(i.Bw), normalize(i.Nw));
-        Nw = normalize(mul(nts, TBN));
+        float3 T = normalize(i.Tw);
+        T = normalize(T - Nw_base * dot(T, Nw_base)); // ★ 포워드와 동일
+        float3 B = normalize(cross(Nw_base, T) * i.TanSign);
+
+    // 포워드와 동일한 row-combo
+        Nw = normalize(nts.x * T + nts.y * B + nts.z * Nw_base);
     }
+
 
     // outputs
     o.G0 = float4(i.WorldPos, 1.0f);
-    o.G1 = float4(Nw * 0.5f + 0.5f, 1.0f); // ImGui로 보기 좋게 0..1 인코딩
+    //o.G1 = float4(Nw * 0.5f + 0.5f, 1.0f); // ImGui로 보기 좋게 0..1 인코딩
+    o.G1 = float4(Nw, 1.0f);
     o.G2 = float4(baseColor, 1.0f);
     o.G3 = float4(metallic, rough, 0, 1.0f);
     return o;

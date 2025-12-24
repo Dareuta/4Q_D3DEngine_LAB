@@ -29,11 +29,6 @@ cbuffer ShadowCB : register(b6)
     float4 Params; // x: bias
 };
 
-Texture2D gPos : register(t0);
-Texture2D gNrm : register(t1);
-Texture2D gAlb : register(t2);
-Texture2D gMR : register(t3);
-
 Texture2D<float> gShadowMap : register(t5);
 
 SamplerState s0 : register(s0);
@@ -55,6 +50,28 @@ VS_OUT VS_Main(uint vid : SV_VertexID)
     o.UV = float2(p.x * 0.5f + 0.5f, 0.5f - p.y * 0.5f);
     return o;
 }
+
+cbuffer PBRParams : register(b8)
+{
+    uint pUseBaseColorTex;
+    uint pUseNormalTex;
+    uint pUseMetallicTex;
+    uint pUseRoughnessTex;
+
+    float4 pBaseColor;
+    float4 pParams;
+
+    float4 pEnvDiff; // rgb=color, w=intensity
+    float4 pEnvSpec; // rgb=color, w=intensity
+    float4 pEnvInfo; // x=prefilterMaxMip
+}
+
+TextureCube txIrr : register(t7);
+TextureCube txPref : register(t8);
+Texture2D txBRDF : register(t9);
+
+SamplerState s3 : register(s3); // IBL clamp sampler
+
 
 float D_GGX(float NdotH, float a)
 {
@@ -80,48 +97,94 @@ float3 F_Schlick(float cosTheta, float3 F0)
     return F0 + (1.0f - F0) * pow(1.0f - cosTheta, 5.0f);
 }
 
-float ShadowTerm(float3 worldPos)
+float ShadowTerm(float3 worldPos, float3 Nw)
 {
-    float4 lp = mul(float4(worldPos, 1), LVP);
-    float3 ndc = lp.xyz / max(lp.w, 1e-6f);
+    float4 lp = mul(float4(worldPos, 1.0f), LVP);
 
+    if (lp.w <= 0.0f)
+        return 1.0f;
+
+    float3 ndc = lp.xyz / lp.w;
     float2 uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
     float z = ndc.z;
 
-    // 밖이면 그냥 lit
-    if (uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1)
+    if (any(uv < 0.0f) || any(uv > 1.0f) || z < 0.0f || z > 1.0f)
         return 1.0f;
 
-    float bias = Params.x;
-    return gShadowMap.SampleCmpLevelZero(s1, uv, z - bias);
+    float ndotl = saturate(dot(Nw, normalize(-vLightDir.xyz)));
+    float bias = max(0.0005f, Params.x * (1.0f - ndotl));
+
+    float2 texel = Params.yz;
+    float acc = 0.0f;
+
+    [unroll]
+    for (int dy = -1; dy <= 1; ++dy)
+    {
+        [unroll]
+        for (int dx = -1; dx <= 1; ++dx)
+        {
+            acc += gShadowMap.SampleCmpLevelZero(
+                s1,
+                uv + float2(dx, dy) * texel,
+                z - bias
+            );
+        }
+    }
+    return acc / 9.0f;
 }
+
+
+
+float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
+{
+    return F0 + (max(float3(1.0f - roughness, 1.0f - roughness, 1.0f - roughness), F0) - F0)
+        * pow(1.0f - cosTheta, 5.0f);
+}
+
+
+// 권장: Load 쓸 거면 타입 명시가 깔끔함
+Texture2D<float4> gPos : register(t0);
+Texture2D<float4> gNrm : register(t1);
+Texture2D<float4> gAlb : register(t2);
+Texture2D<float4> gMR : register(t3);
 
 float4 PS_Main(VS_OUT i) : SV_Target
 {
-    float4 wp = gPos.Sample(s0, i.UV);
+    // --- 픽셀 좌표 안전하게 ---
+    uint w, h;
+    gPos.GetDimensions(w, h);
+
+    int2 pix = int2(i.PosH.xy);
+    pix = clamp(pix, int2(0, 0), int2((int) w - 1, (int) h - 1));
+
+    // --- GBuffer fetch (NO filtering) ---
+    float4 wp = gPos.Load(int3(pix, 0));
     if (wp.w == 0.0f)
-        return float4(0, 0, 0, 1); // geometry 없음
+        return float4(0, 0, 0, 1);
 
     float3 worldPos = wp.xyz;
 
-    float3 N = gNrm.Sample(s0, i.UV).xyz * 2.0f - 1.0f; // decode
-    N = normalize(N);
+    float3 Nw = gNrm.Load(int3(pix, 0)).xyz;
+    Nw = (dot(Nw, Nw) > 1e-6f) ? normalize(Nw) : float3(0, 1, 0);
 
-    float3 albedo = gAlb.Sample(s0, i.UV).rgb;
-    float2 mr = gMR.Sample(s0, i.UV).rg;
-    float metallic = saturate(mr.x);
-    float roughness = clamp(mr.y, 0.02f, 1.0f);
+    float3 baseColor = gAlb.Load(int3(pix, 0)).rgb;
 
+    float2 mr = gMR.Load(int3(pix, 0)).rg;
+    float metallic = saturate(mr.r);
+    float roughness = clamp(mr.g, 0.04f, 1.0f);
+
+    // --- V/L/H ---
     float3 V = normalize(EyePosW - worldPos);
     float3 L = normalize(-vLightDir.xyz);
     float3 H = normalize(V + L);
 
-    float NdotL = saturate(dot(N, L));
-    float NdotV = saturate(dot(N, V));
-    float NdotH = saturate(dot(N, H));
+    float NdotL = saturate(dot(Nw, L));
+    float NdotV = saturate(dot(Nw, V));
+    float NdotH = saturate(dot(Nw, H));
     float VdotH = saturate(dot(V, H));
 
-    float3 F0 = lerp(float3(0.04f, 0.04f, 0.04f), albedo, metallic);
+    // --- BRDF ---
+    float3 F0 = lerp(float3(0.04f, 0.04f, 0.04f), baseColor, metallic);
     float a = roughness * roughness;
 
     float D = D_GGX(NdotH, a);
@@ -132,15 +195,36 @@ float4 PS_Main(VS_OUT i) : SV_Target
 
     float3 kS = F;
     float3 kD = (1.0f - kS) * (1.0f - metallic);
-    float3 diff = kD * albedo / PI;
+    float3 diff = kD * baseColor / PI;
 
-    float shadow = ShadowTerm(worldPos);
+    // --- Shadow ---
+    float shadow = ShadowTerm(worldPos, Nw);
 
-    float3 radiance = vLightColor.rgb; // 이미 intensity 포함
-    float3 color = (diff + spec) * radiance * NdotL * shadow;
+    float3 radiance = vLightColor.rgb;
+    float3 direct = (diff + spec) * radiance * NdotL * shadow;
 
-    // (선택) 너무 깜깜하면 최소 ambient 한 줄만 살려도 됨
-    color += 0.02f * albedo;
+    // --- IBL ---
+    float ao = 1.0f;
+    float3 R = reflect(-V, Nw);
 
+    float3 envDiff = pEnvDiff.rgb * pEnvDiff.w;
+    float3 envSpec = pEnvSpec.rgb * pEnvSpec.w;
+
+    float3 irradiance = txIrr.Sample(s3, Nw).rgb * envDiff;
+
+    float maxMip = max(pEnvInfo.x, 0.0f);
+    float3 prefiltered = txPref.SampleLevel(s3, R, roughness * maxMip).rgb * envSpec;
+
+    float2 brdf = txBRDF.Sample(s3, float2(NdotV, roughness)).rg;
+
+    float3 F_ibl = FresnelSchlickRoughness(NdotV, F0, roughness);
+    float3 kD_amb = (1.0f - F_ibl) * (1.0f - metallic);
+
+    float3 diffIBL = irradiance * baseColor / PI;
+    float3 specIBL = prefiltered * (F_ibl * brdf.x + brdf.y);
+
+    float3 ambient = (kD_amb * diffIBL + specIBL) * ao;
+
+    float3 color = direct + ambient;
     return float4(color, 1);
 }

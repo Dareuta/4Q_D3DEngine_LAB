@@ -7,7 +7,22 @@
 void TutorialApp::RenderShadowPass_Main(
 	ID3D11DeviceContext* ctx,
 	ConstantBuffer& baseCB) {
+	
+
 	//=============================================
+	
+	ID3D11DepthStencilState* dssBefore = nullptr;
+	UINT dssRefBefore = 0;
+	ctx->OMGetDepthStencilState(&dssBefore, &dssRefBefore);
+
+	ID3D11BlendState* bsBefore = nullptr;
+	float bfBefore[4] = { 0,0,0,0 };
+	UINT maskBefore = 0xFFFFFFFF;
+	ctx->OMGetBlendState(&bsBefore, bfBefore, &maskBefore);
+
+	float bf0[4] = { 0,0,0,0 };
+	ctx->OMSetBlendState(nullptr, bf0, 0xFFFFFFFF);
+	ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0); // ✅ depth write ON
 
 	ID3D11RasterizerState* rsBeforeShadow = nullptr;
 	ctx->RSGetState(&rsBeforeShadow); // AddRef
@@ -15,7 +30,7 @@ void TutorialApp::RenderShadowPass_Main(
 	{
 		ID3D11RenderTargetView* rtBefore = nullptr;
 		ID3D11DepthStencilView* dsBefore = nullptr;
-		ctx->OMGetRenderTargets(1, &rtBefore, &dsBefore); // AddRef됨
+		ctx->OMGetRenderTargets(1, &rtBefore, &dsBefore);
 
 		D3D11_VIEWPORT vpBefore{};
 		UINT vpCount = 1;
@@ -24,10 +39,10 @@ void TutorialApp::RenderShadowPass_Main(
 		// t5 언바인드, DSV only
 		ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
 		ctx->PSSetShaderResources(5, 1, nullSRV);
+
 		ctx->OMSetRenderTargets(0, nullptr, mShadowDSV.Get());
 		ctx->ClearDepthStencilView(mShadowDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-		// 라이트용 VP/RS
 		ctx->RSSetViewports(1, &mShadowVP);
 		if (mRS_ShadowBias) ctx->RSSetState(mRS_ShadowBias.Get());
 
@@ -144,7 +159,6 @@ void TutorialApp::RenderShadowPass_Main(
 		}
 
 		// 메인 RT 복구
-		// 원래 RT/DS/VP 복구 (SceneHDR 사용 시 필수)
 		ctx->OMSetRenderTargets(1, &rtBefore, dsBefore);
 		ctx->RSSetViewports(1, &vpBefore);
 
@@ -154,6 +168,11 @@ void TutorialApp::RenderShadowPass_Main(
 
 	ctx->RSSetState(rsBeforeShadow);
 	SAFE_RELEASE(rsBeforeShadow);
+	
+	ctx->OMSetBlendState(bsBefore, bfBefore, maskBefore);
+	ctx->OMSetDepthStencilState(dssBefore, dssRefBefore);
+	SAFE_RELEASE(bsBefore);
+	SAFE_RELEASE(dssBefore);
 
 	//=============================================
 }
@@ -189,7 +208,7 @@ void TutorialApp::RenderGBufferPass(ID3D11DeviceContext* ctx, ConstantBuffer& ba
 	}
 
 	// alpha cut도 GBuffer에 들어가야 “보이는 픽셀만” 남음
-	if (mDbg.forceAlphaClip && mDbg.showTransparent)
+	if (mDbg.forceAlphaClip)
 	{
 		if (mTreeX.enabled)   DrawStaticAlphaCutOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
 		if (mCharX.enabled)   DrawStaticAlphaCutOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
@@ -203,6 +222,12 @@ void TutorialApp::RenderGBufferPass(ID3D11DeviceContext* ctx, ConstantBuffer& ba
 
 void TutorialApp::RenderDeferredLightPass(ID3D11DeviceContext* ctx)
 {
+	float bf[4] = { 0,0,0,0 };
+	ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
+
+	// 풀스크린 패스는 depth 건드리면 또 터짐 (너가 이미 겪었지)
+	ctx->OMSetDepthStencilState(m_pDSS_Disabled ? m_pDSS_Disabled : nullptr, 0);
+
 	// fullscreen tri
 	ctx->IASetInputLayout(nullptr);
 	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -213,26 +238,56 @@ void TutorialApp::RenderDeferredLightPass(ID3D11DeviceContext* ctx)
 
 	ctx->VSSetShader(mVS_DeferredLight.Get(), nullptr, 0);
 	ctx->PSSetShader(mPS_DeferredLight.Get(), nullptr, 0);
-
-	ID3D11ShaderResourceView* srvs[4] =
+	
+	ID3D11ShaderResourceView* srvs[6] =
 	{
-		mGBufferSRV[0].Get(),
-		mGBufferSRV[1].Get(),
-		mGBufferSRV[2].Get(),
-		mGBufferSRV[3].Get(),
+		mGBufferSRV[0].Get(), // t0 worldpos
+		mGBufferSRV[1].Get(), // t1 normal
+		mGBufferSRV[2].Get(), // t2 albedo
+		mGBufferSRV[3].Get(), // t3 mr
+		nullptr,              // t4 (비워둠)
+		mShadowSRV.Get()      // t5 shadow map
 	};
-	ctx->PSSetShaderResources(0, 4, srvs);
+	ctx->PSSetShaderResources(0, 6, srvs);
+
+	// IBL SRV (t7~t9)
+	ID3D11ShaderResourceView* ibl[3] =
+	{
+		mIBLIrrMDRSRV.Get(),
+		mIBLPrefMDRSRV.Get(),
+		mIBLBrdfSRV.Get()
+	};
+	ctx->PSSetShaderResources(7, 3, ibl);
+
+	// IBL sampler (s3)
+	ID3D11SamplerState* sIBL = mSamIBLClamp.Get();
+	ctx->PSSetSamplers(3, 1, &sIBL);
+
+	ID3D11Buffer* b6 = mCB_Shadow.Get();
+	ctx->PSSetConstantBuffers(6, 1, &b6);
+
+	ID3D11SamplerState* cmp = mSamShadowCmp.Get();
+	ctx->PSSetSamplers(1, 1, &cmp);
 
 	ctx->Draw(3, 0);
 
-	// hazard 방지(다음 프레임에 RTV로 다시 쓸 거라 필수)
-	ID3D11ShaderResourceView* nullSRV[4] = { nullptr,nullptr,nullptr,nullptr };
-	ctx->PSSetShaderResources(0, 4, nullSRV);
+	// 정리 (다음 프레임/패스 hazard 방지)
+	ID3D11ShaderResourceView* nullSRV[6] = { nullptr,nullptr,nullptr,nullptr,nullptr,nullptr };
+	ctx->PSSetShaderResources(0, 6, nullSRV);
+	ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0); // 또는 nullptr로 기본 복구
+
+	ID3D11ShaderResourceView* nullIBL[3] = { nullptr,nullptr,nullptr };
+	ctx->PSSetShaderResources(7, 3, nullIBL);		
 }
 
 void TutorialApp::RenderGBufferDebugPass(ID3D11DeviceContext* ctx)
 {
 	if (!mPS_GBufferDebug || !mCB_GBufferDebug) return;
+
+	float bf[4] = { 0,0,0,0 };
+	ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
+	
+	ctx->OMSetDepthStencilState(m_pDSS_Disabled ? m_pDSS_Disabled : nullptr, 0);
 
 	ctx->IASetInputLayout(nullptr);
 	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -264,6 +319,9 @@ void TutorialApp::RenderGBufferDebugPass(ID3D11DeviceContext* ctx)
 
 	ID3D11ShaderResourceView* nullSRV[4] = { nullptr,nullptr,nullptr,nullptr };
 	ctx->PSSetShaderResources(0, 4, nullSRV);
+	ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0); // 또는 nullptr로 기본 복구
+
+
 }
 
 
@@ -611,6 +669,20 @@ void TutorialApp::RenderDebugPass(
 	}
 
 	if (mDbg.showGrid) {
+
+		
+		if (mCB_Shadow && mShadowSRV && mSamShadowCmp)
+		{
+			ID3D11Buffer* b6 = mCB_Shadow.Get();
+			ctx->PSSetConstantBuffers(6, 1, &b6);
+
+			ID3D11SamplerState* cmp = mSamShadowCmp.Get();
+			ctx->PSSetSamplers(1, 1, &cmp);
+
+			ID3D11ShaderResourceView* sh = mShadowSRV.Get();
+			ctx->PSSetShaderResources(5, 1, &sh);
+		}
+
 
 		//물결
 		mTimeSec += GameTimer::m_Instance->DeltaTime();//dt; // dt = 프레임 델타(초)

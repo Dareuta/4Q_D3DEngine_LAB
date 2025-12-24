@@ -91,9 +91,11 @@ void TutorialApp::OnRender()
 	ID3D11SamplerState* s0 = m_pSamplerLinear;
 	ID3D11SamplerState* s1 = mSamShadowCmp.Get();
 	ID3D11SamplerState* s2 = m_pSamplerLinear;
+	ID3D11SamplerState* s3 = mSamIBLClamp ? mSamIBLClamp.Get() : m_pSamplerLinear;
 
-	ID3D11SamplerState* samps[3] = { s0, s1, s2 };
-	ctx->PSSetSamplers(0, 3, samps); // 일단 전부 채워두고 생각하자
+	ID3D11SamplerState* samps[4] = { s0, s1, s2, s3 };
+	ctx->PSSetSamplers(0, 4, samps);
+
 
 
 	// 0) 라이트 카메라/섀도우 CB 업데이트 
@@ -247,7 +249,10 @@ void TutorialApp::OnRender()
 
 	if (mDbg.useDeferred)
 	{
-		// 1) GBuffer 바인드
+		// 1) GBuffer MRT 바인드/클리어
+		ID3D11ShaderResourceView* null4[4] = { nullptr,nullptr,nullptr,nullptr };
+		ctx->PSSetShaderResources(0, 4, null4);
+
 		ID3D11RenderTargetView* mrt[4] =
 		{
 			mGBufferRTV[0].Get(),
@@ -257,51 +262,44 @@ void TutorialApp::OnRender()
 		};
 		ctx->OMSetRenderTargets(4, mrt, m_pDepthStencilView);
 
-		const float z4[4] = { 0,0,0,0 };
-		ctx->ClearRenderTargetView(mGBufferRTV[0].Get(), z4);
-		ctx->ClearRenderTargetView(mGBufferRTV[1].Get(), z4);
-		ctx->ClearRenderTargetView(mGBufferRTV[2].Get(), z4);
-		ctx->ClearRenderTargetView(mGBufferRTV[3].Get(), z4);
+		const float clear0[4] = { 0,0,0,0 };
+		for (int i = 0; i < 4; ++i) ctx->ClearRenderTargetView(mGBufferRTV[i].Get(), clear0);
 		ctx->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-		// 2) Geometry → GBuffer 기록
 		RenderGBufferPass(ctx, cb);
 
-		// 3) Lighting 결과를 mainRTV로
-		ctx->OMSetRenderTargets(1, &mainRTV, m_pDepthStencilView);
+		// 2) Lighting은 메인 RT로 바꿔서 출력
+		ID3D11RenderTargetView* mainRTV2 = (mTone.useSceneHDR && mSceneHDRRTV.Get())
+			? mSceneHDRRTV.Get()
+			: m_pRenderTargetView;
 
-		// 풀스크린으로 GBuffer를 보겠다면 Debug, 아니면 Lighting
-		if (mDbg.showGBufferFS)
-			RenderGBufferDebugPass(ctx);
-		else
-			RenderDeferredLightPass(ctx);
+		ctx->OMSetRenderTargets(1, &mainRTV2, m_pDepthStencilView);
 
-		ctx->OMSetRenderTargets(1, &mainRTV, m_pDepthStencilView);
-		RenderTransparentPass(ctx, cb, eye);   
+		if (mDbg.showGBufferFS) RenderGBufferDebugPass(ctx);
+		else                    RenderDeferredLightPass(ctx);
 
-		// 4) 나머지(선택)
+		// 3) Sky는 lighting 후에 (네 셰이더는 geometry 없으면 검정 뿌림)
 		RenderSkyPass(ctx, viewNoTrans);
+
+		// 4) Transparent는 마지막에 forward로 얹기
 		RenderTransparentPass(ctx, cb, eye);
-		RenderDebugPass(ctx, cb, eye); // 네 프로젝트에서 쓰는 디버그(그리드/화살표) 함수 이름에 맞춰 호출
+
+		// 5) Debug
+		RenderDebugPass(ctx, cb, dirV);
 	}
 	else
 	{
-		// 기존 Forward 경로 그대로
+		// Forward 경로 (기존)
 		RenderSkyPass(ctx, viewNoTrans);
 		RenderOpaquePass(ctx, cb, eye);
+		RenderCutoutPass(ctx, cb, eye);
 		RenderTransparentPass(ctx, cb, eye);
-		RenderDebugPass(ctx, cb, eye);
+		RenderDebugPass(ctx, cb, dirV);
 	}
 
-
-
-
-
-	// SceneHDR -> BackBuffer ToneMap
+	// ToneMap
 	if (mTone.useSceneHDR && mSceneHDRSRV.Get())
-	{
 		RenderToneMapPass(ctx);
-	}
 
 #ifdef _DEBUG
 	// ImGui는 무조건 백버퍼에 그리자 (톤맵 위에 UI 오버레이)

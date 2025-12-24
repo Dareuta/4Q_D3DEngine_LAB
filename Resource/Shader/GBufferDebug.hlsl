@@ -33,9 +33,10 @@ float4 PS_Main(VS_OUT i) : SV_Target
         return float4(saturate(c), 1);
     }
     if (mode == 2u)
-    {
-        float3 n = gNrm.Sample(s0, i.UV).xyz;
-        return float4(n, 1); // 이미 0..1로 저장해둠
+    {        
+        float3 n = normalize(gNrm.Sample(s0, i.UV).xyz);        
+        return float4(n * 0.5f + 0.5f, 1);
+
     }
     if (mode == 3u)
     {

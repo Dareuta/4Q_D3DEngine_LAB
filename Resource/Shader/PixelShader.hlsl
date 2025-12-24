@@ -54,10 +54,28 @@ float4 main(PS_INPUT input) : SV_Target
     float3 emissive = (useEmissive != 0) ? txEmissive.Sample(samLinear, input.Tex).rgb : float3(0, 0, 0);
 
     float3 Nw_base = normalize(input.NormalW);
-    float3 Tw = OrthonormalizeTangent(Nw_base, input.TangentW.xyz);
-    float3 Nw = (useNormal != 0)
-        ? ApplyNormalMapTS(Nw_base, Tw, input.TangentW.w, input.Tex, NORMALMAP_FLIP_GREEN)
-        : Nw_base;
+
+// PBR_PS와 동일: T 정규화 + N에 직교화 + B = cross(N,T)*handedness
+    float3 T = normalize(input.TangentW.xyz);
+    T = normalize(T - Nw_base * dot(T, Nw_base)); // Orthonormalize
+    float3 B = normalize(cross(Nw_base, T) * input.TangentW.w);
+
+    float3 Nw = Nw_base;
+
+    if (useNormal != 0)
+    {
+        float3 nts = txNormal.Sample(samLinear, input.Tex).xyz * 2.0f - 1.0f;
+
+#if NORMALMAP_FLIP_GREEN
+    nts.y = -nts.y;
+#endif
+
+        nts = normalize(nts);
+
+    // tangent space -> world (row-combo)
+        Nw = normalize(nts.x * T + nts.y * B + nts.z * Nw_base);
+    }
+
      
     float3 L = normalize(-vLightDir.xyz);
     float3 V = normalize(EyePosW.xyz - input.WorldPos);

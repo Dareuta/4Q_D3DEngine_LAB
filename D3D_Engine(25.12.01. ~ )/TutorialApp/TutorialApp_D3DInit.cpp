@@ -151,14 +151,15 @@ bool TutorialApp::CreateGBufferResources(ID3D11Device* dev)
 			HR_T(dev->CreateShaderResourceView(mGBufferTex[idx].Get(), &sd, mGBufferSRV[idx].GetAddressOf()));
 		};
 
-	// 0: WorldPos (float16)
-	MakeRT(0, DXGI_FORMAT_R16G16B16A16_FLOAT);
-	// 1: WorldNormal encoded (float16)
+	
+	// 0: WorldPos (float32) 
+	MakeRT(0, DXGI_FORMAT_R32G32B32A32_FLOAT);
+	// 1: WorldNormal (float16)  
 	MakeRT(1, DXGI_FORMAT_R16G16B16A16_FLOAT);
-	// 2: BaseColor (UNORM)
+	// 2: BaseColor
 	MakeRT(2, DXGI_FORMAT_R8G8B8A8_UNORM);
-	// 3: Metallic/Roughness (UNORM)
-	MakeRT(3, DXGI_FORMAT_R8G8B8A8_UNORM);
+	// 3: Metallic/Roughness (float16x2) 
+	MakeRT(3, DXGI_FORMAT_R16G16_FLOAT);
 
 	return true;
 }
