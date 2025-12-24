@@ -2,6 +2,26 @@
 #define DGBGRID 1
 #include "Shared.hlsli"
 
+// point light/shadow (t10 / b13 / b12)
+TextureCube<float> gPointShadowCube : register(t10);
+
+cbuffer PointShadowCB : register(b13)
+{
+    float4 gPointShadowPosRange; // xyz=lightPos, w=range
+    float4 gPointShadowParams; // x=biasWorld, y=enable(1/0), z,w unused
+};
+
+#ifndef MAX_POINT_LIGHTS
+#define MAX_POINT_LIGHTS 8
+#endif
+
+cbuffer DeferredLightsCB : register(b12)
+{
+    float4 gEyePosW; // xyz eye
+    uint4 gPointMeta; // x=count, y=enable, z=falloffMode(0 smooth,1 invSq), w pad
+    float4 gPointPosRange[MAX_POINT_LIGHTS]; // xyz pos, w range
+    float4 gPointColorInt[MAX_POINT_LIGHTS]; // rgb color, w intensity
+};
 
 
 // ===== Procedural Params (PS b9) =====
@@ -235,6 +255,65 @@ float3 LavaColor(float2 uv, float t)
     return col;
 }
 
+float PointShadowTerm(float3 worldPos)
+{
+    if (gPointShadowParams.y < 0.5f)
+        return 1.0f;
+
+    float3 Lvec = worldPos - gPointShadowPosRange.xyz;
+    float dist = length(Lvec);
+    float range = max(gPointShadowPosRange.w, 1e-4f);
+    if (dist >= range || dist < 1e-4f)
+        return 1.0f;
+
+    float3 dir = Lvec / dist;
+
+    float distNorm = dist / range;
+    float storedNorm = gPointShadowCube.SampleLevel(samLinear, dir, 0).r;
+
+    float biasNorm = (gPointShadowParams.x / range);
+    return (distNorm - biasNorm) <= storedNorm ? 1.0f : 0.0f;
+}
+
+float3 AddPointLight(float3 worldPos, float3 N, float3 baseCol)
+{
+    if (gPointMeta.y == 0u || gPointMeta.x == 0u)
+        return 0;
+
+    float3 lp = gPointPosRange[0].xyz;
+    float range = gPointPosRange[0].w;
+
+    float3 Lvec = lp - worldPos;
+    float dist = length(Lvec);
+    if (dist >= range || dist < 1e-4f)
+        return 0;
+
+    float3 L = Lvec / dist;
+    float NdotL = saturate(dot(N, L));
+    if (NdotL <= 0)
+        return 0;
+
+    float atten;
+    if (gPointMeta.z == 0u)
+    {
+        float x = saturate(1.0f - dist / range);
+        atten = x * x;
+    }
+    else
+    {
+        float d2 = max(dist * dist, 1e-4f);
+        atten = 1.0f / d2;
+        float x = saturate(1.0f - dist / range);
+        atten *= x * x; // range에서 0으로 컷
+    }
+
+    float shadow = PointShadowTerm(worldPos);
+
+    float3 light = gPointColorInt[0].rgb * gPointColorInt[0].w;
+    return baseCol * light * (atten * NdotL * shadow);
+}
+
+
 
 struct VS_IN
 {
@@ -322,5 +401,6 @@ float4 PS_Main(VS_OUT IN) : SV_Target
     float3 direct = vLightColor.rgb * ndotl * shadow;
 
     float3 final = gridColor * (ambient + direct);
+    final += AddPointLight(IN.WorldPos, normalize(IN.NormalW), final);
     return float4(final, 1.0);
 }

@@ -444,20 +444,20 @@ private:
 	struct PointLightSettings
 	{
 		bool  enable = true;
-		DirectX::SimpleMath::Vector3 pos{ 0.0f, 100.0f, 0.0f };
+		DirectX::SimpleMath::Vector3 pos{ -10.0f, 0.0f, 135.0f };
 		DirectX::SimpleMath::Vector3 color{ 1.0f, 0.9f, 0.7f };
 		float intensity = 30.0f;  	// HDR 기준: 1.0 넘어도 OK
 		float range = 600.0f;
 		int   falloffMode = 0;     	// 0: smooth, 1: inverse-square
 
-		// Debug marker (billboard quad)
+		// Debug marker (cube)
 		bool  showMarker = true;
 		float markerSize = 25.0f;
 
 		// (옵션) Point Shadow (Cube)
-		bool  shadowEnable = false;
+		bool  shadowEnable = true;
 		float shadowBias = 0.01f;     // dist/range 비교용 바이어스
-		UINT  shadowMapSize = 512;    // CreatePointShadowResources에서 사용
+		UINT  shadowMapSize = 1024;    // CreatePointShadowResources에서 사용
 	} mPoint;
 
 

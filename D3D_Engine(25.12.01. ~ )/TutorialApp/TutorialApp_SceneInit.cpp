@@ -354,21 +354,40 @@ bool TutorialApp::InitScene()
 		HR_T(m_pDevice->CreateBuffer(&ibd, &iinit, &m_pArrowIB));
 
 		// =========================================================
-		// 5b) PointLight marker quad (billboard)
+		// 5b) PointLight marker cube
 		// =========================================================
 		{
 			struct V { DirectX::XMFLOAT3 p; DirectX::XMFLOAT4 c; };
 			const DirectX::XMFLOAT4 W = { 1,1,1,1 };
 
-			V v[4] =
+			// Unit cube centered at origin ([-0.5, +0.5])
+			V v[8] =
 			{
-				{{-0.5f,-0.5f,0.0f}, W},
-				{{+0.5f,-0.5f,0.0f}, W},
-				{{+0.5f,+0.5f,0.0f}, W},
-				{{-0.5f,+0.5f,0.0f}, W},
+				{{-0.5f,-0.5f,-0.5f}, W}, // 0
+				{{+0.5f,-0.5f,-0.5f}, W}, // 1
+				{{+0.5f,+0.5f,-0.5f}, W}, // 2
+				{{-0.5f,+0.5f,-0.5f}, W}, // 3
+				{{-0.5f,-0.5f,+0.5f}, W}, // 4
+				{{+0.5f,-0.5f,+0.5f}, W}, // 5
+				{{+0.5f,+0.5f,+0.5f}, W}, // 6
+				{{-0.5f,+0.5f,+0.5f}, W}, // 7
 			};
 
-			const uint16_t idx[6] = { 0,1,2, 0,2,3 };
+			uint16_t idx[] =
+			{
+				// -Z
+				0,1,2, 0,2,3,
+				// +Z
+				4,6,5, 4,7,6,
+				// -X
+				0,3,7, 0,7,4,
+				// +X
+				1,5,6, 1,6,2,
+				// -Y
+				0,4,5, 0,5,1,
+				// +Y
+				3,2,6, 3,6,7,
+			};
 
 			D3D11_BUFFER_DESC vbd{}; vbd.ByteWidth = sizeof(v);
 			vbd.Usage = D3D11_USAGE_IMMUTABLE;
@@ -394,7 +413,8 @@ bool TutorialApp::InitScene()
 	mSkinX.pos = { 200, -150, 400 };
 	mFemaleX.pos = { 0, -180, 200 };
 
-	mTreeX.enabled = mCharX.enabled = mZeldaX.enabled = mBoxX.enabled = mSkinX.enabled = false;
+	mTreeX.enabled = mCharX.enabled = mZeldaX.enabled = true;
+	mBoxX.enabled = mSkinX.enabled = false;
 
 	mTreeX.initScl = mTreeX.scl; mCharX.initScl = mCharX.scl; mZeldaX.initScl = mZeldaX.scl;
 	mTreeX.initRotD = mTreeX.rotD; mCharX.initRotD = mCharX.rotD; mZeldaX.initRotD = mZeldaX.rotD;

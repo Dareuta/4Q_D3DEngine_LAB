@@ -341,8 +341,6 @@ void TutorialApp::UpdateImGUI()
 			ImGui::SameLine();
 			ImGui::Checkbox("Sort", &mDbg.sortTransparent);
 
-
-
 			ImGui::Separator();
 
 			ImGui::Checkbox("Wireframe", &mDbg.wireframe); ImGui::SameLine();
@@ -371,8 +369,8 @@ void TutorialApp::UpdateImGUI()
 
 	if (mDbg.showLightWindow)
 	{
-		ImGui::SetNextWindowSize(ImVec2(700, 300), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowPos(ImVec2(610, 780), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(700, 200), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(610, 880), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(u8"조명(Light)", &mDbg.showLightWindow))
 		{
 			auto NormalizeSafe = [](Vector3 v, const Vector3& fallback)
@@ -415,8 +413,6 @@ void TutorialApp::UpdateImGUI()
 				DirToYawPitch(dirUI, m_LightYaw, m_LightPitch);
 			}
 
-			
-
 			// yaw/pitch는 "보조"로 남기기 (원하면 접어두기)
 			if (ImGui::CollapsingHeader(u8"Yaw/Pitch (보조 컨트롤)"))
 			{
@@ -439,18 +435,18 @@ void TutorialApp::UpdateImGUI()
 			ImGui::ColorEdit3("Color##pt", (float*)&mPoint.color);
 			ImGui::DragFloat("Intensity##pt", &mPoint.intensity, 0.1f, 0.0f, 5000.0f);
 			ImGui::DragFloat("Range##pt", &mPoint.range, 1.0f, 1.0f, 10000.0f);
+
 			{
 				const char* falloffs[] = { "Smooth (gamey)", "InverseSquare (phys-ish)" };
 				ImGui::Combo("Falloff##pt", &mPoint.falloffMode, falloffs, IM_ARRAYSIZE(falloffs));
 			}
-
 
 			ImGui::Checkbox("Show Marker##pt", &mPoint.showMarker);
 			ImGui::DragFloat("Marker Size##pt", &mPoint.markerSize, 0.5f, 1.0f, 500.0f, "%.1f");
 			ImGui::SeparatorText("Point Shadow (Cube)");
 			ImGui::Checkbox("Enable##ptshadow", &mPoint.shadowEnable);
 			ImGui::DragFloat("Bias##ptshadow", &mPoint.shadowBias, 0.0005f, 0.0f, 0.05f, "%.5f");
-			ImGui::TextDisabled("MapSize=%u (변경하려면 재시작/리소스 재생성 필요)", (unsigned)mPoint.shadowMapSize);
+			ImGui::TextDisabled(u8"MapSize=%u (변경하려면 재시작/리소스 재생성 필요)", (unsigned)mPoint.shadowMapSize);
 
 		}
 		ImGui::End();
@@ -461,7 +457,7 @@ void TutorialApp::UpdateImGUI()
 	// ─────────────────────────────────────────────────────────────
 	if (mDbg.showShadowWindow)
 	{
-		ImGui::SetNextWindowSize(ImVec2(300, 640), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(300, 440), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowPos(ImVec2(370, 0), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(u8"그림자(Shadow)", &mDbg.showShadowWindow))
 		{

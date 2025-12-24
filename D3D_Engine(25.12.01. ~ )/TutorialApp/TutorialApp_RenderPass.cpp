@@ -480,6 +480,8 @@ void TutorialApp::RenderDeferredLightPass(ID3D11DeviceContext* ctx)
 	ctx->VSSetShader(mVS_DeferredLight.Get(), nullptr, 0);
 	ctx->PSSetShader(mPS_DeferredLight.Get(), nullptr, 0);
 
+	if (m_pConstantBuffer) ctx->PSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+
 	ID3D11ShaderResourceView* srvs[6] =
 	{
 		mGBufferSRV[0].Get(), // t0 worldpos
@@ -1040,6 +1042,9 @@ void TutorialApp::RenderDebugPass(
 		// Grid가 건드리는 PS 슬롯들
 		ID3D11Buffer* oPSb6 = nullptr; ctx->PSGetConstantBuffers(6, 1, &oPSb6);
 		ID3D11Buffer* oPSb9 = nullptr; ctx->PSGetConstantBuffers(9, 1, &oPSb9);
+		ID3D11Buffer* oPSb12 = nullptr; ctx->PSGetConstantBuffers(12, 1, &oPSb12);
+		ID3D11Buffer* oPSb13 = nullptr; ctx->PSGetConstantBuffers(13, 1, &oPSb13);
+		ID3D11ShaderResourceView* oSRV10 = nullptr; ctx->PSGetShaderResources(10, 1, &oSRV10);
 
 		ID3D11SamplerState* oSamp1 = nullptr; ctx->PSGetSamplers(1, 1, &oSamp1);
 		ID3D11ShaderResourceView* oSRV5 = nullptr; ctx->PSGetShaderResources(5, 1, &oSRV5);
@@ -1057,6 +1062,20 @@ void TutorialApp::RenderDebugPass(
 
 			ID3D11ShaderResourceView* sh = mShadowSRV.Get();
 			ctx->PSSetShaderResources(5, 1, &sh);
+
+			// (추가) Point Shadow Cube (t10/b13) + PointLight CB (b12)
+			if (mPointShadowSRV && mCB_PointShadow)
+			{
+				ID3D11ShaderResourceView* ps = mPointShadowSRV.Get();
+				ctx->PSSetShaderResources(10, 1, &ps);
+				ID3D11Buffer* b13 = mCB_PointShadow.Get();
+				ctx->PSSetConstantBuffers(13, 1, &b13);
+			}
+			if (mCB_DeferredLights)
+			{
+				ID3D11Buffer* b12 = mCB_DeferredLights.Get();
+				ctx->PSSetConstantBuffers(12, 1, &b12);
+			}
 		}
 
 		// -----------------------------
@@ -1112,6 +1131,9 @@ void TutorialApp::RenderDebugPass(
 		ctx->PSSetSamplers(1, 1, &oSamp1);
 		ctx->PSSetConstantBuffers(6, 1, &oPSb6);
 		ctx->PSSetConstantBuffers(9, 1, &oPSb9);
+		ctx->PSSetShaderResources(10, 1, &oSRV10);
+		ctx->PSSetConstantBuffers(12, 1, &oPSb12);
+		ctx->PSSetConstantBuffers(13, 1, &oPSb13);
 
 		ctx->VSSetConstantBuffers(0, 1, &oVSb0);
 		ctx->PSSetConstantBuffers(0, 1, &oPSb0);
@@ -1133,6 +1155,10 @@ void TutorialApp::RenderDebugPass(
 		SAFE_RELEASE(oSamp1);
 		SAFE_RELEASE(oPSb6);
 		SAFE_RELEASE(oPSb9);
+		SAFE_RELEASE(oPSb12);
+		SAFE_RELEASE(oPSb13);
+		SAFE_RELEASE(oSRV10);
+
 		SAFE_RELEASE(oVSb0);
 		SAFE_RELEASE(oPSb0);
 
@@ -1148,16 +1174,14 @@ void TutorialApp::RenderDebugPass(
 
 
 	// ------------------------------------------------------------
-	// PointLight marker (billboard quad)
+	// PointLight marker (cube)
 	// ------------------------------------------------------------
 	if (mPoint.enable && mPoint.showMarker && m_pPointMarkerVB && m_pPointMarkerIB)
 	{
 		using namespace DirectX::SimpleMath;
 
-		const Vector3 eye = m_Camera.m_World.Translation();
 		Matrix worldMarker = Matrix::CreateScale(mPoint.markerSize) *
-			Matrix::CreateBillboard(mPoint.pos, eye, Vector3::UnitY, nullptr);
-
+			Matrix::CreateTranslation(mPoint.pos);
 		ConstantBuffer local = baseCB;
 		local.mWorld = XMMatrixTranspose(worldMarker);
 		local.mWorldInvTranspose = worldMarker.Invert();
@@ -1174,7 +1198,7 @@ void TutorialApp::RenderDebugPass(
 
 		float bf[4] = { 0,0,0,0 };
 		ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
-		ctx->OMSetDepthStencilState(m_pDSS_Disabled ? m_pDSS_Disabled : m_pDSS_Opaque, 0);
+		ctx->OMSetDepthStencilState(m_pDSS_Trans ? m_pDSS_Trans : m_pDSS_Opaque, 0);
 		if (m_pDbgRS) ctx->RSSetState(m_pDbgRS);
 
 		UINT stride = sizeof(DirectX::XMFLOAT3) + sizeof(DirectX::XMFLOAT4), offset = 0;
@@ -1185,11 +1209,11 @@ void TutorialApp::RenderDebugPass(
 		ctx->VSSetShader(m_pDbgVS, nullptr, 0);
 		ctx->PSSetShader(m_pDbgPS, nullptr, 0);
 
-		const DirectX::XMFLOAT4 kMagenta = { 1.0f, 0.0f, 1.0f, 1.0f };
-		ctx->UpdateSubresource(m_pDbgCB, 0, nullptr, &kMagenta, 0, 0);
+		const DirectX::XMFLOAT4 cubeColor = { 0.9131, 0.3419, 0.00335, 1.0f }; //Amber
+		ctx->UpdateSubresource(m_pDbgCB, 0, nullptr, &cubeColor, 0, 0);
 		ctx->PSSetConstantBuffers(3, 1, &m_pDbgCB);
 
-		ctx->DrawIndexed(6, 0, 0);
+		ctx->DrawIndexed(36, 0, 0);
 
 		// 상태 복구
 		ctx->VSSetShader(oVS, nullptr, 0);

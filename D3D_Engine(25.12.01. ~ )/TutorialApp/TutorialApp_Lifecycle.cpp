@@ -157,9 +157,12 @@ void TutorialApp::OnRender()
 	XMVECTOR L = XMVector3Normalize(XMVector3TransformNormal(base, R));
 	Vector3  dirV = { XMVectorGetX(L), XMVectorGetY(L), XMVectorGetZ(L) };
 	cb.vLightDir = Vector4(dirV.x, dirV.y, dirV.z, 0.0f);
-	cb.vLightColor = Vector4(m_LightColor.x * m_LightIntensity,
-		m_LightColor.y * m_LightIntensity,
-		m_LightColor.z * m_LightIntensity, (mDbg.dirLightEnable ? 1.0f : 0.0f));
+	float dirOn = mDbg.dirLightEnable ? 1.0f : 0.0f;
+	cb.vLightColor = Vector4(
+		m_LightColor.x * m_LightIntensity * dirOn,
+		m_LightColor.y * m_LightIntensity * dirOn,
+		m_LightColor.z * m_LightIntensity * dirOn,
+		dirOn);
 
 	ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cb, 0, 0);
 	ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
