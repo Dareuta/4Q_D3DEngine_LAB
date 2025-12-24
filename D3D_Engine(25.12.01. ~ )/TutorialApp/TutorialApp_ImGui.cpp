@@ -13,7 +13,7 @@ bool TutorialApp::InitImGUI()
 	ImGuiIO& io = ImGui::GetIO();
 	const ImWchar* kr = io.Fonts->GetGlyphRangesKorean();
 	io.Fonts->Clear();
-	io.Fonts->AddFontFromFileTTF("../Resource/fonts/Regular.ttf", 16.0f, nullptr, kr);
+	io.Fonts->AddFontFromFileTTF("../Resource/fonts/Regular.ttf", 15.0f, nullptr, kr);
 
 	ImGui_ImplWin32_Init(m_hWnd);
 	ImGui_ImplDX11_Init(this->m_pDevice, this->m_pDeviceContext);
@@ -93,7 +93,8 @@ void TutorialApp::UpdateImGUI()
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui::SetNextWindowSize(ImVec2(420, 0), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(370, 1080), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
 	if (ImGui::Begin(u8"임꾸꾸이"))
 	{
 		// 상단 상태
@@ -258,7 +259,7 @@ void TutorialApp::UpdateImGUI()
 		// ─────────────────────────────────────────────────────────────
 		// PBR
 		// ─────────────────────────────────────────────────────────────
-		if (ImGui::CollapsingHeader(u8"PBR (Physically Based Rendering)"), ImGuiTreeNodeFlags_DefaultOpen)
+		if (ImGui::CollapsingHeader(u8"PBR (Physically Based Rendering)", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::Checkbox(u8"PBR 사용(Enable)", &mPbr.enable);
 
@@ -336,9 +337,9 @@ void TutorialApp::UpdateImGUI()
 
 			ImGui::Checkbox("Skybox", &mDbg.showSky);
 			ImGui::Checkbox("Opaque Pass", &mDbg.showOpaque);
-			ImGui::Checkbox("Transparent Pass", &mDbg.showTransparent);			
+			ImGui::Checkbox("Transparent Pass", &mDbg.showTransparent);
 			ImGui::SameLine();
-			ImGui::Checkbox("Sort", &mDbg.sortTransparent); 
+			ImGui::Checkbox("Sort", &mDbg.sortTransparent);
 
 
 
@@ -370,6 +371,8 @@ void TutorialApp::UpdateImGUI()
 
 	if (mDbg.showLightWindow)
 	{
+		ImGui::SetNextWindowSize(ImVec2(700, 100), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(610, 980), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(u8"조명(Light)", &mDbg.showLightWindow))
 		{
 			auto NormalizeSafe = [](Vector3 v, const Vector3& fallback)
@@ -427,6 +430,8 @@ void TutorialApp::UpdateImGUI()
 	// ─────────────────────────────────────────────────────────────
 	if (mDbg.showShadowWindow)
 	{
+		ImGui::SetNextWindowSize(ImVec2(300, 640), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(370, 0), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(u8"그림자(Shadow)", &mDbg.showShadowWindow))
 		{
 			// ── ShadowMap Preview / Grid ────────────────────────────────
@@ -498,14 +503,14 @@ void TutorialApp::UpdateImGUI()
 		// ─────────────────────────────────────────────────────────────
 
 
-		ImGui::SetNextWindowSize(ImVec2(520, 420), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(500, 640), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(1420, 0), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(u8"G-Buffer", &mDbg.showGBuffer))
 		{
 
 			if (ImGui::CollapsingHeader(u8"지연 셰이딩(Deferred) / G-Buffer", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				ImGui::Checkbox("Deferred Shading (Opaque)##deferred", &mDbg.useDeferred);
-				ImGui::SameLine();
+				ImGui::Checkbox("Deferred Shading (Opaque)##deferred", &mDbg.useDeferred);				
 				ImGui::TextDisabled(u8"(투명/머리카락은 마지막에 Forward Overlay)");
 
 				// 출력 선택: Final vs G-Buffer Debug
@@ -547,7 +552,7 @@ void TutorialApp::UpdateImGUI()
 
 				}
 			}
-			
+
 			// SRV 없으면 걍 안내만
 			if (!mGBufferSRV[0] || !mGBufferSRV[1] || !mGBufferSRV[2] || !mGBufferSRV[3])
 			{
