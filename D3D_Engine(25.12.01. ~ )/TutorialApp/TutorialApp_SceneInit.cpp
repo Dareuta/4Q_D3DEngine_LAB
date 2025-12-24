@@ -4,6 +4,7 @@
 #include "TutorialApp.h"
 
 #include <d3dcompiler.h>
+#include <algorithm>
 
 
 UINT TutorialApp::GetMipCountFromSRV(ID3D11ShaderResourceView* srv)
@@ -113,6 +114,7 @@ static void LogSRV(const wchar_t* name, ID3D11ShaderResourceView* srv)
 bool TutorialApp::InitScene()
 {
 	CreateShadowResources(m_pDevice);
+	CreatePointShadowResources(m_pDevice);
 	CreateDepthOnlyShaders(m_pDevice);
 
 	using Microsoft::WRL::ComPtr;
@@ -561,6 +563,85 @@ bool TutorialApp::InitScene()
 }
 
 
+bool TutorialApp::CreatePointShadowResources(ID3D11Device* dev)
+{
+	// Point shadow cube: R32_FLOAT (distNorm) + D32_FLOAT depth
+	UINT size = (mPoint.shadowMapSize == 0) ? 512u : mPoint.shadowMapSize;
+	size = (UINT)std::clamp((int)size, 128, 2048);
+
+	// ----- Color cube (distNorm) -----
+	D3D11_TEXTURE2D_DESC td{};
+	td.Width = size;
+	td.Height = size;
+	td.MipLevels = 1;
+	td.ArraySize = 6;
+	td.Format = DXGI_FORMAT_R32_FLOAT;
+	td.SampleDesc.Count = 1;
+	td.Usage = D3D11_USAGE_DEFAULT;
+	td.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+	td.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
+	HR_T(dev->CreateTexture2D(&td, nullptr, mPointShadowTex.GetAddressOf()));
+
+	// RTV per face
+	D3D11_RENDER_TARGET_VIEW_DESC rtvd{};
+	rtvd.Format = td.Format;
+	rtvd.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+	rtvd.Texture2DArray.MipSlice = 0;
+	rtvd.Texture2DArray.ArraySize = 1;
+	for (UINT i = 0; i < 6; ++i)
+	{
+		rtvd.Texture2DArray.FirstArraySlice = i;
+		HR_T(dev->CreateRenderTargetView(mPointShadowTex.Get(), &rtvd, mPointShadowRTV[i].GetAddressOf()));
+	}
+
+	// SRV cube
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvd{};
+	srvd.Format = td.Format;
+	srvd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+	srvd.TextureCube.MipLevels = 1;
+	HR_T(dev->CreateShaderResourceView(mPointShadowTex.Get(), &srvd, mPointShadowSRV.GetAddressOf()));
+
+	// ----- Depth cube -----
+	D3D11_TEXTURE2D_DESC dtd{};
+	dtd.Width = size;
+	dtd.Height = size;
+	dtd.MipLevels = 1;
+	dtd.ArraySize = 6;
+	dtd.Format = DXGI_FORMAT_D32_FLOAT;
+	dtd.SampleDesc.Count = 1;
+	dtd.Usage = D3D11_USAGE_DEFAULT;
+	dtd.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	dtd.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
+	HR_T(dev->CreateTexture2D(&dtd, nullptr, mPointShadowDepth.GetAddressOf()));
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvd{};
+	dsvd.Format = DXGI_FORMAT_D32_FLOAT;
+	dsvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+	dsvd.Texture2DArray.MipSlice = 0;
+	dsvd.Texture2DArray.ArraySize = 1;
+	for (UINT i = 0; i < 6; ++i)
+	{
+		dsvd.Texture2DArray.FirstArraySlice = i;
+		HR_T(dev->CreateDepthStencilView(mPointShadowDepth.Get(), &dsvd, mPointShadowDSV[i].GetAddressOf()));
+	}
+
+	// Viewport
+	mPointShadowVP = { 0,0,(float)size,(float)size,0.0f,1.0f };
+
+	// Constant buffer (b13)
+	if (!mCB_PointShadow)
+	{
+		D3D11_BUFFER_DESC bd{};
+		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(CB_PointShadow);
+		HR_T(dev->CreateBuffer(&bd, nullptr, mCB_PointShadow.GetAddressOf()));
+	}
+
+	return true;
+}
+
+
 bool TutorialApp::CreateShadowResources(ID3D11Device* dev)
 {
 	// 1) Shadow map: R32 typeless + DSV + SRV
@@ -696,15 +777,17 @@ void TutorialApp::UpdateLightCameraAndShadowCB(ID3D11DeviceContext* ctx)
 bool TutorialApp::CreateDepthOnlyShaders(ID3D11Device* dev)
 {
 	using Microsoft::WRL::ComPtr;
-	ComPtr<ID3DBlob> vsPntt, vsSkin, psDepth;
+	ComPtr<ID3DBlob> vsPntt, vsSkin, psDepth, psPoint;
 
 	HR_T(CompileShaderFromFile(L"../Resource/Shader/DepthOnly_VS.hlsl", "main", "vs_5_0", vsPntt.GetAddressOf()));
 	HR_T(CompileShaderFromFile(L"../Resource/Shader/DepthOnly_SkinnedVS.hlsl", "main", "vs_5_0", vsSkin.GetAddressOf()));
 	HR_T(CompileShaderFromFile(L"../Resource/Shader/DepthOnly_PS.hlsl", "main", "ps_5_0", psDepth.GetAddressOf()));
+	HR_T(CompileShaderFromFile(L"../Resource/Shader/PointShadow_PS.hlsl", "main", "ps_5_0", psPoint.GetAddressOf()));
 
 	HR_T(dev->CreateVertexShader(vsPntt->GetBufferPointer(), vsPntt->GetBufferSize(), nullptr, mVS_Depth.GetAddressOf()));
 	HR_T(dev->CreateVertexShader(vsSkin->GetBufferPointer(), vsSkin->GetBufferSize(), nullptr, mVS_DepthSkinned.GetAddressOf()));
 	HR_T(dev->CreatePixelShader(psDepth->GetBufferPointer(), psDepth->GetBufferSize(), nullptr, mPS_Depth.GetAddressOf()));
+	HR_T(dev->CreatePixelShader(psPoint->GetBufferPointer(), psPoint->GetBufferSize(), nullptr, mPS_PointShadow.GetAddressOf()));
 
 	// IL: PNTT
 	static const D3D11_INPUT_ELEMENT_DESC IL_PNTT[] = {

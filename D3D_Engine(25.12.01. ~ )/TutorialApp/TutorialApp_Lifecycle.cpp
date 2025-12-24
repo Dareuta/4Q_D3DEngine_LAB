@@ -221,6 +221,7 @@ void TutorialApp::OnRender()
 
 	// 3) SHADOW PASS (DepthOnly)  
 	RenderShadowPass_Main(ctx, cb);
+	RenderPointShadowPass_Cube(ctx, cb);
 
 	// 5) 본 패스에서 섀도우 샘플 바인드 (PS: t5/s1/b6)
 	{
@@ -231,6 +232,23 @@ void TutorialApp::OnRender()
 		ctx->PSSetConstantBuffers(6, 1, &b6r);
 		ctx->PSSetSamplers(1, 1, &cmp);
 		ctx->PSSetShaderResources(5, 1, &shSRV);
+	}
+
+	// (옵션) Point Shadow Cube bind (PS: t10/b13)
+	{
+		if (mCB_PointShadow)
+		{
+			CB_PointShadow pcb{};
+			pcb.posRange = DirectX::XMFLOAT4(mPoint.pos.x, mPoint.pos.y, mPoint.pos.z, mPoint.range);
+			pcb.params = DirectX::XMFLOAT4(mPoint.shadowBias, (mPoint.enable && mPoint.shadowEnable) ? 1.0f : 0.0f, 0.0f, 0.0f);
+			ctx->UpdateSubresource(mCB_PointShadow.Get(), 0, nullptr, &pcb, 0, 0);
+
+			ID3D11Buffer* b13 = mCB_PointShadow.Get();
+			ctx->PSSetConstantBuffers(13, 1, &b13);
+		}
+
+		ID3D11ShaderResourceView* srv = (mPoint.enable && mPoint.shadowEnable) ? mPointShadowSRV.Get() : nullptr;
+		ctx->PSSetShaderResources(10, 1, &srv);
 	}
 
 	// === Toon ramp bind (PS: t6/b7) ===

@@ -192,6 +192,219 @@ void TutorialApp::RenderShadowPass_Main(
 }
 
 
+// -----------------------------------------------------------------------------
+// Point Shadow Pass (Cube)
+// - Color cube에 distNorm(dist/range) 저장
+// - Depth cube로 nearest surface 확보
+// - 첫 번째 point light(=mPoint)만 지원
+// -----------------------------------------------------------------------------
+void TutorialApp::RenderPointShadowPass_Cube(
+	ID3D11DeviceContext* ctx,
+	ConstantBuffer& baseCB)
+{
+	if (!mPoint.enable || !mPoint.shadowEnable)
+		return;
+
+	if (!mPointShadowTex || !mPointShadowSRV || !mCB_PointShadow)
+		return; // 리소스 없음
+
+	// SRV(t10)로 바인딩되어 있을 수도 있으니 렌더 전에 언바인드
+	{
+		ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
+		ctx->PSSetShaderResources(10, 1, nullSRV);
+	}
+
+	// 상태 백업
+	ID3D11DepthStencilState* dssBefore = nullptr;
+	UINT dssRefBefore = 0;
+	ctx->OMGetDepthStencilState(&dssBefore, &dssRefBefore);
+
+	ID3D11BlendState* bsBefore = nullptr;
+	float bfBefore[4] = { 0,0,0,0 };
+	UINT maskBefore = 0xFFFFFFFF;
+	ctx->OMGetBlendState(&bsBefore, bfBefore, &maskBefore);
+
+	ID3D11RasterizerState* rsBefore = nullptr;
+	ctx->RSGetState(&rsBefore);
+
+	ID3D11RenderTargetView* rtBefore = nullptr;
+	ID3D11DepthStencilView* dsBefore = nullptr;
+	ctx->OMGetRenderTargets(1, &rtBefore, &dsBefore);
+
+	D3D11_VIEWPORT vpBefore{};
+	UINT vpCount = 1;
+	ctx->RSGetViewports(&vpCount, &vpBefore);
+
+	// 기본 상태
+	float bf0[4] = { 0,0,0,0 };
+	ctx->OMSetBlendState(nullptr, bf0, 0xFFFFFFFF);
+	ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0);
+	if (mRS_ShadowBias) ctx->RSSetState(mRS_ShadowBias.Get());
+	ctx->RSSetViewports(1, &mPointShadowVP);
+
+	// b13 업로드 (pos/range + bias/enable)
+	CB_PointShadow pcb{};
+	pcb.posRange = DirectX::XMFLOAT4(mPoint.pos.x, mPoint.pos.y, mPoint.pos.z, mPoint.range);
+	pcb.params = DirectX::XMFLOAT4(mPoint.shadowBias, mPoint.shadowEnable ? 1.0f : 0.0f, 0.0f, 0.0f);
+	ctx->UpdateSubresource(mCB_PointShadow.Get(), 0, nullptr, &pcb, 0, 0);
+	ID3D11Buffer* b13 = mCB_PointShadow.Get();
+	ctx->PSSetConstantBuffers(13, 1, &b13);
+
+	// Face camera setup
+	const Vector3 pos = mPoint.pos;
+	const Vector3 dirs[6] = {
+		Vector3(1,0,0), Vector3(-1,0,0),
+		Vector3(0,1,0), Vector3(0,-1,0),
+		Vector3(0,0,1), Vector3(0,0,-1)
+	};
+	const Vector3 ups[6] = {
+		Vector3::UnitY, Vector3::UnitY,
+		Vector3(0,0,-1), Vector3(0,0,1),
+		Vector3::UnitY, Vector3::UnitY
+	};
+	const Matrix P = Matrix::CreatePerspectiveFieldOfView(DirectX::XM_PIDIV2, 1.0f, 0.1f, mPoint.range);
+
+	// Draw helper (StaticMesh)
+	auto DrawPointDepth_Static = [&](StaticMesh& mesh, const std::vector<MaterialGPU>& mtls, const Matrix& world, const Matrix& V, bool alphaCut)
+		{
+			ConstantBuffer cbd = baseCB;
+			cbd.mWorld = XMMatrixTranspose(world);
+			cbd.mWorldInvTranspose = world.Invert();
+			cbd.mView = XMMatrixTranspose(V);
+			cbd.mProjection = XMMatrixTranspose(P);
+			ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbd, 0, 0);
+			ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+
+			ctx->IASetInputLayout(m_pMeshIL);
+			ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			ctx->VSSetShader(mVS_Depth.Get(), nullptr, 0);
+			ctx->PSSetShader(mPS_PointShadow.Get(), nullptr, 0);
+
+			for (size_t i = 0; i < mesh.Ranges().size(); ++i)
+			{
+				const auto& r = mesh.Ranges()[i];
+				const auto& mat = mtls[r.materialIndex];
+				const bool isCut = mat.hasOpacity;
+				if (alphaCut != isCut) continue;
+
+				UseCB use{};
+				use.useOpacity = isCut ? 1u : 0u;
+				use.alphaCut = isCut ? mShadowAlphaCut : -1.0f;
+				ctx->UpdateSubresource(m_pUseCB, 0, nullptr, &use, 0, 0);
+				ctx->PSSetConstantBuffers(2, 1, &m_pUseCB);
+
+				mat.Bind(ctx);
+				mesh.DrawSubmesh(ctx, (UINT)i);
+				MaterialGPU::Unbind(ctx);
+			}
+		};
+
+	auto DrawPointShadowStatic = [&](auto& X, auto& mesh, auto& mtls, const Matrix& V)
+		{
+			if (!X.enabled) return;
+			Matrix W = ComposeSRT(X);
+			if (mDbg.showOpaque)      DrawPointDepth_Static(mesh, mtls, W, V, false);
+			if (mDbg.showTransparent) DrawPointDepth_Static(mesh, mtls, W, V, true);
+		};
+
+	// per-face render
+	for (UINT face = 0; face < 6; ++face)
+	{
+		ID3D11RenderTargetView* rtv = mPointShadowRTV[face].Get();
+		ID3D11DepthStencilView* dsv = mPointShadowDSV[face].Get();
+		ctx->OMSetRenderTargets(1, &rtv, dsv);
+
+		const float clear[4] = { 1,1,1,1 };
+		ctx->ClearRenderTargetView(rtv, clear);
+		ctx->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+		const Matrix V = Matrix::CreateLookAt(pos, pos + dirs[face], ups[face]);
+
+		DrawPointShadowStatic(mTreeX, gTree, gTreeMtls, V);
+		DrawPointShadowStatic(mCharX, gChar, gCharMtls, V);
+		DrawPointShadowStatic(mZeldaX, gZelda, gZeldaMtls, V);
+		DrawPointShadowStatic(mFemaleX, gFemale, gFemaleMtls, V);
+
+		// Rigid
+		if (mBoxRig && mBoxX.enabled)
+		{
+			ConstantBuffer cbd = baseCB;
+			const Matrix W = ComposeSRT(mBoxX);
+			cbd.mWorld = XMMatrixTranspose(W);
+			cbd.mWorldInvTranspose = Matrix::Identity;
+			cbd.mView = XMMatrixTranspose(V);
+			cbd.mProjection = XMMatrixTranspose(P);
+			ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbd, 0, 0);
+			ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+
+			ctx->IASetInputLayout(mIL_PNTT.Get());
+			ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			ctx->VSSetShader(mVS_Depth.Get(), nullptr, 0);
+			ctx->PSSetShader(mPS_PointShadow.Get(), nullptr, 0);
+
+			UseCB use{};
+			use.useOpacity = 1u;
+			use.alphaCut = mShadowAlphaCut;
+			ctx->UpdateSubresource(m_pUseCB, 0, nullptr, &use, 0, 0);
+			ctx->PSSetConstantBuffers(2, 1, &m_pUseCB);
+
+			mBoxRig->DrawDepthOnly(
+				ctx, W,
+				V, P,
+				m_pConstantBuffer,
+				m_pUseCB,
+				mVS_Depth.Get(),
+				mPS_PointShadow.Get(),
+				mIL_PNTT.Get(),
+				mShadowAlphaCut
+			);
+		}
+
+		// Skinned
+		if (mSkinRig && mSkinX.enabled)
+		{
+			ctx->IASetInputLayout(mIL_PNTT_BW.Get());
+			ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			ctx->VSSetShader(mVS_DepthSkinned.Get(), nullptr, 0);
+			ctx->PSSetShader(mPS_PointShadow.Get(), nullptr, 0);
+
+			ConstantBuffer cbd = baseCB;
+			cbd.mWorld = XMMatrixTranspose(ComposeSRT(mSkinX));
+			cbd.mWorldInvTranspose = Matrix::Identity;
+			cbd.mView = XMMatrixTranspose(V);
+			cbd.mProjection = XMMatrixTranspose(P);
+			ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbd, 0, 0);
+			ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+
+			mSkinRig->DrawDepthOnly(
+				ctx, ComposeSRT(mSkinX),
+				V, P,
+				m_pConstantBuffer,
+				m_pUseCB,
+				m_pBoneCB,
+				mVS_DepthSkinned.Get(),
+				mPS_PointShadow.Get(),
+				mIL_PNTT_BW.Get(),
+				mShadowAlphaCut
+			);
+		}
+	}
+
+	// 상태 복구
+	ctx->OMSetRenderTargets(1, &rtBefore, dsBefore);
+	ctx->RSSetViewports(1, &vpBefore);
+	ctx->RSSetState(rsBefore);
+	ctx->OMSetBlendState(bsBefore, bfBefore, maskBefore);
+	ctx->OMSetDepthStencilState(dssBefore, dssRefBefore);
+
+	SAFE_RELEASE(rtBefore);
+	SAFE_RELEASE(dsBefore);
+	SAFE_RELEASE(rsBefore);
+	SAFE_RELEASE(bsBefore);
+	SAFE_RELEASE(dssBefore);
+}
+
+
 void TutorialApp::BindStaticMeshPipeline_GBuffer(ID3D11DeviceContext* ctx)
 {
 	ctx->IASetInputLayout(m_pMeshIL);

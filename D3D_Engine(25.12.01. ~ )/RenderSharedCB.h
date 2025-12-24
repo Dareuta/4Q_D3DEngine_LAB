@@ -126,3 +126,14 @@ struct CB_DeferredLights
 	DirectX::XMFLOAT4 pointPosRange[MAX_POINT_LIGHTS];   // xyz=pos, w=range
 	DirectX::XMFLOAT4 pointColorInt[MAX_POINT_LIGHTS];   // rgb=color, w=intensity
 };
+
+// =========================================================
+// b13: Point Shadow (Cube) params
+// HLSL: cbuffer PointShadowCB : register(b13)
+// =========================================================
+struct CB_PointShadow
+{
+	DirectX::XMFLOAT4 posRange; // xyz = light pos, w = range
+	DirectX::XMFLOAT4 params;   // x = bias (dist/range), y = enable(0/1), z/w = reserved
+};
+static_assert((sizeof(CB_PointShadow) % 16) == 0);

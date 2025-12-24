@@ -77,11 +77,16 @@ private:
 	void UpdateLightCameraAndShadowCB(ID3D11DeviceContext* ctx);
 	bool CreateShadowResources(ID3D11Device* dev);
 	bool CreateDepthOnlyShaders(ID3D11Device* dev);
+	bool CreatePointShadowResources(ID3D11Device* dev);
 
 	//==========================================================================================
 	// 렌더 패스
 	//==========================================================================================
 	void RenderShadowPass_Main(
+		ID3D11DeviceContext* ctx,
+		ConstantBuffer& baseCB);
+
+	void RenderPointShadowPass_Cube(
 		ID3D11DeviceContext* ctx,
 		ConstantBuffer& baseCB);
 
@@ -252,8 +257,23 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11VertexShader>       mVS_Depth;        // Static
 	Microsoft::WRL::ComPtr<ID3D11VertexShader>       mVS_DepthSkinned; // Skinned
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>        mPS_Depth;        // Alpha-cut clip()
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>        mPS_PointShadow;  // Point shadow: dist/range 저장
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>        mIL_PNTT;         // 정적 (PNTT)
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>        mIL_PNTT_BW;      // 스키닝 (PNTT + Bone)
+
+	// =====================================================================================
+	// Point Shadow (Cube) : t10 / b13
+	// - 컬러 큐브에 distNorm (dist/range) 저장
+	// - 깊이 버퍼는 face별로 별도 사용
+	// =====================================================================================
+	Microsoft::WRL::ComPtr<ID3D11Texture2D>          mPointShadowTex;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> mPointShadowSRV;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   mPointShadowRTV[6];
+
+	Microsoft::WRL::ComPtr<ID3D11Texture2D>          mPointShadowDepth;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView>   mPointShadowDSV[6];
+	D3D11_VIEWPORT                                   mPointShadowVP{};
+	Microsoft::WRL::ComPtr<ID3D11Buffer>             mCB_PointShadow;  // b13
 
 	// Shadow CB (b6) 및 라이트 카메라 행렬
 	Microsoft::WRL::ComPtr<ID3D11Buffer>             mCB_Shadow;       // LVP, Params
@@ -427,6 +447,11 @@ private:
 		float intensity = 30.0f;  	// HDR 기준: 1.0 넘어도 OK
 		float range = 600.0f;
 		int   falloffMode = 0;     	// 0: smooth, 1: inverse-square
+
+		// (옵션) Point Shadow (Cube)
+		bool  shadowEnable = false;
+		float shadowBias = 0.01f;     // dist/range 비교용 바이어스
+		UINT  shadowMapSize = 512;    // CreatePointShadowResources에서 사용
 	} mPoint;
 
 

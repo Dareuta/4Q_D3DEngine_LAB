@@ -399,6 +399,7 @@ void TutorialApp::UpdateImGUI()
 				};
 
 			Vector3 dirUI = YawPitchToDir(m_LightYaw, m_LightPitch);
+			ImGui::Checkbox("Directional Enable##dir", &mDbg.dirLightEnable);
 
 			ImGui::TextDisabled(u8"방향 벡터 편집(자동 정규화).");
 			if (ImGui::DragFloat3(u8"Light Dir (x,y,z)", (float*)&dirUI, 0.01f, -1.0f, 1.0f, "%.3f"))
@@ -442,6 +443,11 @@ void TutorialApp::UpdateImGUI()
 				const char* falloffs[] = { "Smooth (gamey)", "InverseSquare (phys-ish)" };
 				ImGui::Combo("Falloff##pt", &mPoint.falloffMode, falloffs, IM_ARRAYSIZE(falloffs));
 			}
+
+			ImGui::SeparatorText("Point Shadow (Cube)");
+			ImGui::Checkbox("Enable##ptshadow", &mPoint.shadowEnable);
+			ImGui::DragFloat("Bias##ptshadow", &mPoint.shadowBias, 0.0005f, 0.0f, 0.05f, "%.5f");
+			ImGui::TextDisabled("MapSize=%u (변경하려면 재시작/리소스 재생성 필요)", (unsigned)mPoint.shadowMapSize);
 
 		}
 		ImGui::End();

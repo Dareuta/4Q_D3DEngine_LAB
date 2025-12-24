@@ -31,6 +31,9 @@ cbuffer ShadowCB : register(b6)
 
 Texture2D<float> gShadowMap : register(t5);
 
+// Point Shadow Cube (distNorm) : t10
+TextureCube<float> gPointShadowCube : register(t10);
+
 SamplerState s0 : register(s0);
 SamplerComparisonState s1 : register(s1);
 
@@ -74,6 +77,16 @@ SamplerState s3 : register(s3); // IBL clamp sampler
 
 
 // =============================================================
+// b13: Point Shadow (Cube) params
+// =============================================================
+cbuffer PointShadowCB : register(b13)
+{
+    float4 gPointShadowPosRange; // xyz=pos, w=range
+    float4 gPointShadowParams;   // x=bias(distNorm), y=enable(0/1), z/w=unused
+}
+
+
+// =============================================================
 // b12: Deferred Point Lights (C++: CB_DeferredLights)
 // =============================================================
 #define MAX_POINT_LIGHTS 8
@@ -106,6 +119,30 @@ float AttenInvSq(float dist, float range)
 
     float t = saturate(1.0f - dist / max(range, 1e-4f));
     return inv * (t * t);
+}
+
+
+// =============================================================
+// Point Shadow term (Cube distNorm)
+// - 단일 큐브를 "첫 번째 포인트 라이트"에만 적용(가볍게 가자)
+// =============================================================
+float PointShadowTerm(float3 worldPos, float3 lightPos, float range)
+{
+    if (gPointShadowParams.y == 0.0f)
+        return 1.0f;
+
+    float3 v = worldPos - lightPos;
+    float dist = length(v);
+    if (dist >= range)
+        return 1.0f;
+
+    float invDist = 1.0f / max(dist, 1e-4f);
+    float3 dir = v * invDist; // cube sample dir
+
+    float distN = dist / max(range, 1e-4f);
+    float stored = gPointShadowCube.SampleLevel(s3, dir, 0).r;
+
+    return (distN - gPointShadowParams.x <= stored) ? 1.0f : 0.0f;
 }
 
 
@@ -283,7 +320,12 @@ float4 PS_Main(VS_OUT i) : SV_Target
             float3 lightColor = gPointColorInt[li].rgb * gPointColorInt[li].w;
             float3 radianceP = lightColor * atten;
 
-            direct += (diffP + specP) * radianceP * NdotLp; // (shadow 없음)
+            // (옵션) point shadow: 첫 번째 포인트 라이트에만 적용
+            float shadowP = 1.0f;
+            if (li == 0u)
+                shadowP = PointShadowTerm(worldPos, lp, range);
+
+            direct += (diffP + specP) * radianceP * NdotLp * shadowP;
         }
     }
 
