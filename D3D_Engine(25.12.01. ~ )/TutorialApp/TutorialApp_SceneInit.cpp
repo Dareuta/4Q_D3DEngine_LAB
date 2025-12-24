@@ -290,6 +290,9 @@ bool TutorialApp::InitScene()
 		if (!m_pUseCB)          MakeCB(sizeof(UseCB), &m_pUseCB);
 		if (!m_pToonCB)			MakeCB(sizeof(ToonCB_), &m_pToonCB);
 
+		// Deferred Light CB (PS b12): point lights array
+		if (!mCB_DeferredLights) MakeCB(sizeof(CB_DeferredLights), mCB_DeferredLights.GetAddressOf());
+
 		// Bone palette (VS b4)
 		if (!m_pBoneCB) {
 			D3D11_BUFFER_DESC cbd{};

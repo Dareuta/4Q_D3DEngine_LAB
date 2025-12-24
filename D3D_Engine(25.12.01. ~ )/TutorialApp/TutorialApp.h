@@ -10,6 +10,7 @@
 //================================================================================================
 #pragma once
 
+//#define NOMINMAX
 #include <windows.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
@@ -356,7 +357,7 @@ private:
 		bool disableSpecular = false;
 		bool disableEmissive = false;
 
-		bool  forceAlphaClip = true; 
+		bool  forceAlphaClip = true;
 		bool  showGrid = true;
 
 		float alphaCut = 0.4f;
@@ -369,8 +370,8 @@ private:
 
 		bool useDeferred = true;
 
-		bool showDeferredUI = true; 
-		bool showGBuffer = true;    
+		bool showDeferredUI = true;
+		bool showGBuffer = true;
 
 		bool showGBufferFS = false;
 		int  gbufferMode = 0;
@@ -378,7 +379,7 @@ private:
 
 		bool showShadowWindow = true;
 		bool showLightWindow = true;
-		
+
 		bool sortTransparent = true;
 	};
 
@@ -412,6 +413,22 @@ private:
 	float   m_LightPitch = DirectX::XMConvertToRadians(60.0f);
 	Vector3 m_LightColor{ 1, 1, 1 };
 	float   m_LightIntensity = 1.0f;
+
+	// =====================
+	// Point Light (Deferred에서 우선 지원)
+	// =====================
+	struct PointLightSettings
+	{
+		bool  enable = true;
+		DirectX::SimpleMath::Vector3 pos{ 0.0f, 100.0f, 0.0f };
+		DirectX::SimpleMath::Vector3 color{ 1.0f, 0.9f, 0.7f };
+		float intensity = 30.0f;  	// HDR 기준: 1.0 넘어도 OK
+		float range = 600.0f;
+		int   falloffMode = 0;     	// 0: smooth, 1: inverse-square
+	} mPoint;
+
+
+
 
 	Vector3 cubeScale{ 5.0f,  5.0f,  5.0f };
 	Vector3 cubeTransformA{ 0.0f,  0.0f, -20.0f };
@@ -542,6 +559,8 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> mVS_DeferredLight;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>  mPS_DeferredLight;
+
+	Microsoft::WRL::ComPtr<ID3D11Buffer>       mCB_DeferredLights;
 
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>  mPS_GBufferDebug;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>       mCB_GBufferDebug;

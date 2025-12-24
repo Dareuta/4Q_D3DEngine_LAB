@@ -111,3 +111,18 @@ struct CB_Proc
 };
 static_assert((sizeof(CB_Proc) % 16) == 0);
 
+// =========================================================
+// b12: Deferred Point Lights (GBuffer Lighting Pass 전용)
+// HLSL: cbuffer DeferredLightsCB : register(b12)
+// =========================================================
+
+static constexpr uint32_t MAX_POINT_LIGHTS = 8;
+
+struct CB_DeferredLights
+{
+	DirectX::XMFLOAT4 eyePosW;          // xyz = eye pos, w = 1
+	uint32_t          meta[4];          // x=numPoint, y=enablePoint, z=falloffMode(0:smooth,1:invSq), w=pad
+
+	DirectX::XMFLOAT4 pointPosRange[MAX_POINT_LIGHTS];   // xyz=pos, w=range
+	DirectX::XMFLOAT4 pointColorInt[MAX_POINT_LIGHTS];   // rgb=color, w=intensity
+};

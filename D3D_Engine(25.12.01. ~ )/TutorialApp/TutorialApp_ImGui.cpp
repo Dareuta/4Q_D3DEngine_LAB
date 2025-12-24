@@ -371,8 +371,8 @@ void TutorialApp::UpdateImGUI()
 
 	if (mDbg.showLightWindow)
 	{
-		ImGui::SetNextWindowSize(ImVec2(700, 100), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowPos(ImVec2(610, 980), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(700, 300), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(610, 780), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(u8"조명(Light)", &mDbg.showLightWindow))
 		{
 			auto NormalizeSafe = [](Vector3 v, const Vector3& fallback)
@@ -419,6 +419,26 @@ void TutorialApp::UpdateImGUI()
 			{
 				ImGui::SliderAngle(u8"Yaw", &m_LightYaw, -180.0f, 180.0f);
 				ImGui::SliderAngle(u8"Pitch", &m_LightPitch, -89.0f, 89.0f);
+				ImGui::ColorEdit3(u8"색상(Color)", (float*)&m_LightColor);
+				ImGui::DragFloat(u8"강도(Intensity)", &m_LightIntensity, 0.1f, 0.0f, 200.0f, "%.3f");
+				if (ImGui::Button(u8"조명 값 초기화"))
+				{
+					m_LightColor = s_initLightColor;
+					m_LightYaw = s_initLightYaw;
+					m_LightPitch = s_initLightPitch;
+					m_LightIntensity = s_initLightIntensity;
+				}
+			}
+
+			ImGui::SeparatorText("Point Light");
+			ImGui::Checkbox("Enable##pt", &mPoint.enable);
+			ImGui::DragFloat3("Pos##pt", (float*)&mPoint.pos, 1.0f, -5000.0f, 5000.0f);
+			ImGui::ColorEdit3("Color##pt", (float*)&mPoint.color);
+			ImGui::DragFloat("Intensity##pt", &mPoint.intensity, 0.1f, 0.0f, 5000.0f);
+			ImGui::DragFloat("Range##pt", &mPoint.range, 1.0f, 1.0f, 10000.0f);
+			{
+				const char* falloffs[] = { "Smooth (gamey)", "InverseSquare (phys-ish)" };
+				ImGui::Combo("Falloff##pt", &mPoint.falloffMode, falloffs, IM_ARRAYSIZE(falloffs));
 			}
 
 		}
@@ -510,7 +530,7 @@ void TutorialApp::UpdateImGUI()
 
 			if (ImGui::CollapsingHeader(u8"지연 셰이딩(Deferred) / G-Buffer", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				ImGui::Checkbox("Deferred Shading (Opaque)##deferred", &mDbg.useDeferred);				
+				ImGui::Checkbox("Deferred Shading (Opaque)##deferred", &mDbg.useDeferred);
 				ImGui::TextDisabled(u8"(투명/머리카락은 마지막에 Forward Overlay)");
 
 				// 출력 선택: Final vs G-Buffer Debug

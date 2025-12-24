@@ -175,6 +175,24 @@ void TutorialApp::OnRender()
 	ctx->UpdateSubresource(m_pBlinnCB, 0, nullptr, &bp, 0, 0);
 	ctx->PSSetConstantBuffers(1, 1, &m_pBlinnCB);
 
+	// b12: Deferred point light(s) 업로드
+	if (mCB_DeferredLights)
+	{
+		CB_DeferredLights dl{};
+		dl.eyePosW = DirectX::XMFLOAT4(eye.x, eye.y, eye.z, 1.0f);
+		dl.meta[0] = 1u;
+		dl.meta[1] = mPoint.enable ? 1u : 0u;
+		dl.meta[2] = (uint32_t)max(0, min(1, mPoint.falloffMode));
+		dl.meta[3] = 0u;
+
+		dl.pointPosRange[0] = DirectX::XMFLOAT4(mPoint.pos.x, mPoint.pos.y, mPoint.pos.z, mPoint.range);
+		dl.pointColorInt[0] = DirectX::XMFLOAT4(mPoint.color.x, mPoint.color.y, mPoint.color.z, mPoint.intensity);
+
+		ctx->UpdateSubresource(mCB_DeferredLights.Get(), 0, nullptr, &dl, 0, 0);
+		ID3D11Buffer* b12 = mCB_DeferredLights.Get();
+		ctx->PSSetConstantBuffers(12, 1, &b12);
+	}
+
 	// PBR params update (매 프레임)
 	CB_PBRParams pbr{};
 	pbr.useBaseColorTex = mPbr.useBaseColorTex ? 1u : 0u;

@@ -73,6 +73,44 @@ Texture2D txBRDF : register(t9);
 SamplerState s3 : register(s3); // IBL clamp sampler
 
 
+// =============================================================
+// b12: Deferred Point Lights (C++: CB_DeferredLights)
+// =============================================================
+#define MAX_POINT_LIGHTS 8
+
+
+cbuffer DeferredLightsCB : register(b12)
+{
+    float4 gEyePosW; // xyz = eye pos, w = 1
+
+    uint4 gPointMeta; // x=numPoint, y=enablePoint, z=falloffMode(0:smooth,1:invSq), w=pad
+
+    float4 gPointPosRange[MAX_POINT_LIGHTS]; // xyz=pos, w=range
+
+    float4 gPointColorInt[MAX_POINT_LIGHTS]; // rgb=color, w=intensity
+
+}
+
+float AttenSmooth(float dist, float range)
+{
+
+    float t = saturate(1.0f - dist / max(range, 1e-4f));
+    return t * t;
+}
+
+
+float AttenInvSq(float dist, float range)
+{
+
+    float inv = 1.0f / max(dist * dist, 1e-4f);
+
+    float t = saturate(1.0f - dist / max(range, 1e-4f));
+    return inv * (t * t);
+}
+
+
+
+
 float D_GGX(float NdotH, float a)
 {
     float a2 = a * a;
@@ -202,6 +240,55 @@ float4 PS_Main(VS_OUT i) : SV_Target
 
     float3 radiance = vLightColor.rgb;
     float3 direct = (diff + spec) * radiance * NdotL * shadow;
+    
+    
+// --- Point Lights (Deferred) ---
+    if (gPointMeta.y != 0u)
+    {
+        uint count = min(gPointMeta.x, (uint) MAX_POINT_LIGHTS);
+
+    [loop]
+        for (uint li = 0u; li < count; ++li)
+        {
+            float3 lp = gPointPosRange[li].xyz;
+            float range = gPointPosRange[li].w;
+
+            float3 Lvec = lp - worldPos;
+            float dist = length(Lvec);
+            if (dist >= range || dist < 1e-4f)
+                continue;
+
+            float3 Lp = Lvec / dist;
+
+            float NdotLp = saturate(dot(Nw, Lp));
+            if (NdotLp <= 0.0f)
+                continue;
+
+            float3 Hp = normalize(V + Lp);
+            float NdotHp = saturate(dot(Nw, Hp));
+            float VdotHp = saturate(dot(V, Hp));
+
+            float Dp = D_GGX(NdotHp, a);
+            float Gp = G_Smith(NdotV, NdotLp, roughness);
+            float3 Fp = F_Schlick(VdotHp, F0);
+
+            float3 specP = (Dp * Gp * Fp) / max(4.0f * NdotV * NdotLp, 1e-6f);
+
+            float3 kS_p = Fp;
+            float3 kD_p = (1.0f - kS_p) * (1.0f - metallic);
+            float3 diffP = kD_p * baseColor / PI;
+
+            float atten = (gPointMeta.z == 0u) ? AttenSmooth(dist, range) : AttenInvSq(dist, range);
+
+            float3 lightColor = gPointColorInt[li].rgb * gPointColorInt[li].w;
+            float3 radianceP = lightColor * atten;
+
+            direct += (diffP + specP) * radianceP * NdotLp; // (shadow 없음)
+        }
+    }
+
+
+
 
     // --- IBL ---
     float ao = 1.0f;

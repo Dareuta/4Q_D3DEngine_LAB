@@ -91,7 +91,7 @@ void TutorialApp::RenderShadowPass_Main(
 				if (!X.enabled) return;
 
 				Matrix W = ComposeSRT(X);
-				
+
 				if (mDbg.showOpaque)
 					DrawDepth_Static(mesh, mtls, W, false); // opaque only
 
@@ -204,7 +204,7 @@ void TutorialApp::RenderGBufferPass(ID3D11DeviceContext* ctx, ConstantBuffer& ba
 {
 	ID3D11RasterizerState* oldRS = nullptr;
 	ctx->RSGetState(&oldRS);
-	
+
 	if (mDbg.cullNone && m_pDbgRS) ctx->RSSetState(m_pDbgRS);
 	else                           ctx->RSSetState(m_pCullBackRS);
 
@@ -292,6 +292,11 @@ void TutorialApp::RenderDeferredLightPass(ID3D11DeviceContext* ctx)
 
 	ID3D11SamplerState* cmp = mSamShadowCmp.Get();
 	ctx->PSSetSamplers(1, 1, &cmp);
+
+
+	// b12: point lights
+	if (mCB_DeferredLights) { ID3D11Buffer* b12 = mCB_DeferredLights.Get(); ctx->PSSetConstantBuffers(12, 1, &b12); }
+
 
 	ctx->Draw(3, 0);
 
