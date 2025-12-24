@@ -8,7 +8,6 @@ void TutorialApp::RenderShadowPass_Main(
 	ID3D11DeviceContext* ctx,
 	ConstantBuffer& baseCB) {
 
-
 	//=============================================
 
 	ID3D11DepthStencilState* dssBefore = nullptr;
@@ -51,6 +50,9 @@ void TutorialApp::RenderShadowPass_Main(
 		// (정적 먼저 쓰도록 정리)
 		auto DrawDepth_Static = [&](StaticMesh& mesh, const std::vector<MaterialGPU>& mtls, const Matrix& world, bool alphaCut)
 			{
+
+
+
 				// b0: 라이트 View/Proj 로 교체
 				ConstantBuffer cbd = baseCB;
 				cbd.mWorld = XMMatrixTranspose(world);
@@ -87,9 +89,14 @@ void TutorialApp::RenderShadowPass_Main(
 		auto DrawShadowStatic = [&](auto& X, auto& mesh, auto& mtls)
 			{
 				if (!X.enabled) return;
+
 				Matrix W = ComposeSRT(X);
-				DrawDepth_Static(mesh, mtls, W, false);               // opaque
-				if (mDbg.showTransparent) DrawDepth_Static(mesh, mtls, W, true); // alpha-cut
+				
+				if (mDbg.showOpaque)
+					DrawDepth_Static(mesh, mtls, W, false); // opaque only
+
+				if (mDbg.showTransparent)
+					DrawDepth_Static(mesh, mtls, W, true);  // alpha-cut only
 			};
 
 		DrawShadowStatic(mTreeX, gTree, gTreeMtls);
@@ -195,6 +202,12 @@ void TutorialApp::BindStaticMeshPipeline_GBuffer(ID3D11DeviceContext* ctx)
 
 void TutorialApp::RenderGBufferPass(ID3D11DeviceContext* ctx, ConstantBuffer& baseCB)
 {
+	ID3D11RasterizerState* oldRS = nullptr;
+	ctx->RSGetState(&oldRS);
+	
+	if (mDbg.cullNone && m_pDbgRS) ctx->RSSetState(m_pDbgRS);
+	else                           ctx->RSSetState(m_pCullBackRS);
+
 	float bf[4] = { 0,0,0,0 };
 	ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
 	ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0);
@@ -226,6 +239,9 @@ void TutorialApp::RenderGBufferPass(ID3D11DeviceContext* ctx, ConstantBuffer& ba
 
 
 	mPbr.enable = oldPBR;
+
+	ctx->RSSetState(oldRS);
+	SAFE_RELEASE(oldRS);
 }
 
 void TutorialApp::RenderDeferredLightPass(ID3D11DeviceContext* ctx)
@@ -328,8 +344,6 @@ void TutorialApp::RenderGBufferDebugPass(ID3D11DeviceContext* ctx)
 	ID3D11ShaderResourceView* nullSRV[4] = { nullptr,nullptr,nullptr,nullptr };
 	ctx->PSSetShaderResources(0, 4, nullSRV);
 	ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0); // 또는 nullptr로 기본 복구
-
-
 }
 
 
@@ -713,10 +727,14 @@ void TutorialApp::RenderTransparentPass(
 void TutorialApp::RenderDebugPass(
 	ID3D11DeviceContext* ctx,
 	ConstantBuffer& baseCB,
-	const DirectX::SimpleMath::Vector3& lightDir) {
+	const DirectX::SimpleMath::Vector3& lightDir)
+{
 	//=============================================
 
-	if (mDbg.showLightArrow) {
+	if (mDbg.showLightArrow)
+	{
+		using namespace DirectX::SimpleMath;
+
 		Vector3 D = -lightDir; D.Normalize();
 		Matrix worldArrow = Matrix::CreateScale(m_ArrowScale) * Matrix::CreateWorld(m_ArrowPos, D, Vector3::UnitY);
 
@@ -752,7 +770,6 @@ void TutorialApp::RenderDebugPass(
 		ctx->UpdateSubresource(m_pDbgCB, 0, nullptr, &kBright, 0, 0);
 		ctx->PSSetConstantBuffers(3, 1, &m_pDbgCB);
 
-
 		ctx->DrawIndexed(indexCount, 0, 0);
 
 		// 상태 복구
@@ -762,13 +779,52 @@ void TutorialApp::RenderDebugPass(
 		ctx->OMSetBlendState(oBS, oBF, oSM);
 		ctx->OMSetDepthStencilState(oDSS, oRef);
 		ctx->RSSetState(oRS);
+
 		SAFE_RELEASE(oVS); SAFE_RELEASE(oPS); SAFE_RELEASE(oIL);
 		SAFE_RELEASE(oBS); SAFE_RELEASE(oDSS); SAFE_RELEASE(oRS);
 	}
 
-	if (mDbg.showGrid) {
+	if (mDbg.showGrid)
+	{
+		using namespace DirectX::SimpleMath;
 
+		// -----------------------------
+		// ✅ Grid가 건드리는 상태/바인딩 전부 백업
+		// -----------------------------
+		ID3D11RasterizerState* oRS = nullptr; ctx->RSGetState(&oRS);
 
+		ID3D11DepthStencilState* oDSS = nullptr; UINT oRef = 0;
+		ctx->OMGetDepthStencilState(&oDSS, &oRef);
+
+		ID3D11BlendState* oBS = nullptr; float oBF[4]; UINT oSM = 0xFFFFFFFF;
+		ctx->OMGetBlendState(&oBS, oBF, &oSM);
+
+		ID3D11InputLayout* oIL = nullptr; ctx->IAGetInputLayout(&oIL);
+		D3D11_PRIMITIVE_TOPOLOGY oTopo; ctx->IAGetPrimitiveTopology(&oTopo);
+
+		ID3D11Buffer* oVB0 = nullptr; UINT oStride0 = 0, oOffset0 = 0;
+		ctx->IAGetVertexBuffers(0, 1, &oVB0, &oStride0, &oOffset0);
+
+		ID3D11Buffer* oIB = nullptr; DXGI_FORMAT oIBFmt = DXGI_FORMAT_UNKNOWN; UINT oIBOff = 0;
+		ctx->IAGetIndexBuffer(&oIB, &oIBFmt, &oIBOff);
+
+		ID3D11VertexShader* oVS = nullptr; ctx->VSGetShader(&oVS, nullptr, 0);
+		ID3D11PixelShader* oPS = nullptr; ctx->PSGetShader(&oPS, nullptr, 0);
+
+		// VS/PS CB(0)도 건드리니까 백업
+		ID3D11Buffer* oVSb0 = nullptr; ctx->VSGetConstantBuffers(0, 1, &oVSb0);
+		ID3D11Buffer* oPSb0 = nullptr; ctx->PSGetConstantBuffers(0, 1, &oPSb0);
+
+		// Grid가 건드리는 PS 슬롯들
+		ID3D11Buffer* oPSb6 = nullptr; ctx->PSGetConstantBuffers(6, 1, &oPSb6);
+		ID3D11Buffer* oPSb9 = nullptr; ctx->PSGetConstantBuffers(9, 1, &oPSb9);
+
+		ID3D11SamplerState* oSamp1 = nullptr; ctx->PSGetSamplers(1, 1, &oSamp1);
+		ID3D11ShaderResourceView* oSRV5 = nullptr; ctx->PSGetShaderResources(5, 1, &oSRV5);
+
+		// -----------------------------
+		// (기존 Grid 코드) Shadow 바인딩
+		// -----------------------------
 		if (mCB_Shadow && mShadowSRV && mSamShadowCmp)
 		{
 			ID3D11Buffer* b6 = mCB_Shadow.Get();
@@ -781,53 +837,96 @@ void TutorialApp::RenderDebugPass(
 			ctx->PSSetShaderResources(5, 1, &sh);
 		}
 
-
-		//물결
-		mTimeSec += GameTimer::m_Instance->DeltaTime();//dt; // dt = 프레임 델타(초)
+		// -----------------------------
+		// (기존 Grid 코드) 물결 / ProcCB(b9)
+		// -----------------------------
+		mTimeSec += GameTimer::m_Instance->DeltaTime();
 
 		CB_Proc cb{};
-		//cb.uProc1 = { mTimeSec, 1.2f, 0.8f, 0.35f };   // cellScale, warp1, warp2
-		//cb.uProc2 = { 0.02f, 0.03f, 0.2f, 0.0f };      // scroll speed, gridMix
-		cb.uProc1 = { mTimeSec, 18.0f, 0.5f, 0.0f }; // y=ringCount(링 개수), z=warpStrength
-		cb.uProc2 = { 0.0f, 0.0f, 0.2f, 250.0f };    // w=rippleRadiusWorld
-		cb.uProc2.w = 1000.0f; // 그리드가 대충 그 정도 크기라고 치고(월드 단위)
+		cb.uProc1 = { mTimeSec, 18.0f, 0.5f, 0.0f };
+		cb.uProc2 = { 0.0f, 0.0f, 0.2f, 250.0f };
+		cb.uProc2.w = 1000.0f;
 
 		ctx->UpdateSubresource(mCB_Proc.Get(), 0, nullptr, &cb, 0, 0);
 
-		ID3D11Buffer* b = mCB_Proc.Get();
-		ctx->PSSetConstantBuffers(9, 1, &b);
+		ID3D11Buffer* b9 = mCB_Proc.Get();
+		ctx->PSSetConstantBuffers(9, 1, &b9);
 
-
+		// -----------------------------
+		// (기존 Grid 코드) 상태/파이프라인 세팅 + 드로우
+		// -----------------------------
 		float bf[4] = { 0,0,0,0 };
 		ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
 		ctx->OMSetDepthStencilState(m_pDSS_Opaque, 0);
-		ctx->RSSetState(m_pCullBackRS); // 윗면 보이게 만든 그 상태
+		ctx->RSSetState(m_pCullBackRS);
 
 		ConstantBuffer local = {};
 		local.mWorld = XMMatrixTranspose(Matrix::Identity);
 		local.mWorldInvTranspose = Matrix::Identity;
 		local.mView = XMMatrixTranspose(view);
 		local.mProjection = XMMatrixTranspose(m_Projection);
-		local.vLightDir = baseCB.vLightDir;     // ← 조명 동일
+		local.vLightDir = baseCB.vLightDir;
 		local.vLightColor = baseCB.vLightColor;
+
 		ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &local, 0, 0);
 		ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
 		ctx->PSSetConstantBuffers(0, 1, &m_pConstantBuffer);
 
 		UINT stride = sizeof(DirectX::XMFLOAT3), offset = 0;
+		ID3D11Buffer* vb = mGridVB.Get();
 		ctx->IASetInputLayout(mGridIL.Get());
 		ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		ctx->IASetVertexBuffers(0, 1, mGridVB.GetAddressOf(), &stride, &offset);
+		ctx->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
 		ctx->IASetIndexBuffer(mGridIB.Get(), DXGI_FORMAT_R16_UINT, 0);
 		ctx->VSSetShader(mGridVS.Get(), nullptr, 0);
 		ctx->PSSetShader(mGridPS.Get(), nullptr, 0);
+
 		ctx->DrawIndexed(mGridIndexCount, 0, 0);
 
-		ID3D11Buffer* nullCB = nullptr;
-		ctx->PSSetConstantBuffers(9, 1, &nullCB);
+		// -----------------------------
+		// ✅ 상태/바인딩 복구 (이게 핵심)
+		// -----------------------------
+		ctx->PSSetShaderResources(5, 1, &oSRV5);
+		ctx->PSSetSamplers(1, 1, &oSamp1);
+		ctx->PSSetConstantBuffers(6, 1, &oPSb6);
+		ctx->PSSetConstantBuffers(9, 1, &oPSb9);
+
+		ctx->VSSetConstantBuffers(0, 1, &oVSb0);
+		ctx->PSSetConstantBuffers(0, 1, &oPSb0);
+
+		ctx->VSSetShader(oVS, nullptr, 0);
+		ctx->PSSetShader(oPS, nullptr, 0);
+
+		ctx->IASetInputLayout(oIL);
+		ctx->IASetPrimitiveTopology(oTopo);
+		ctx->IASetVertexBuffers(0, 1, &oVB0, &oStride0, &oOffset0);
+		ctx->IASetIndexBuffer(oIB, oIBFmt, oIBOff);
+
+		ctx->OMSetBlendState(oBS, oBF, oSM);
+		ctx->OMSetDepthStencilState(oDSS, oRef);
+		ctx->RSSetState(oRS);
+
+		// Release
+		SAFE_RELEASE(oSRV5);
+		SAFE_RELEASE(oSamp1);
+		SAFE_RELEASE(oPSb6);
+		SAFE_RELEASE(oPSb9);
+		SAFE_RELEASE(oVSb0);
+		SAFE_RELEASE(oPSb0);
+
+		SAFE_RELEASE(oVS);
+		SAFE_RELEASE(oPS);
+		SAFE_RELEASE(oIL);
+		SAFE_RELEASE(oVB0);
+		SAFE_RELEASE(oIB);
+		SAFE_RELEASE(oBS);
+		SAFE_RELEASE(oDSS);
+		SAFE_RELEASE(oRS);
 	}
+
 	//=============================================
 }
+
 
 void TutorialApp::BindStaticMeshPipeline(ID3D11DeviceContext* ctx) {
 	//=============================================

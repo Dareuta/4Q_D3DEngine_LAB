@@ -203,9 +203,7 @@ void TutorialApp::OnRender()
 
 	// 3) SHADOW PASS (DepthOnly)  
 	RenderShadowPass_Main(ctx, cb);
-	// 4) SKYBOX (선택)
-	RenderSkyPass(ctx, viewNoTrans);
-	
+
 	// 5) 본 패스에서 섀도우 샘플 바인드 (PS: t5/s1/b6)
 	{
 		ID3D11Buffer* b6r = mCB_Shadow.Get();
@@ -266,6 +264,21 @@ void TutorialApp::OnRender()
 
 		if (mDbg.showGBufferFS) RenderGBufferDebugPass(ctx);
 		else                    RenderDeferredLightPass(ctx);
+
+		// RenderDeferredLightPass / RenderGBufferDebugPass 이후, TransparentPass 전에 다시 바인드
+		{
+			ID3D11Buffer* b6r = mCB_Shadow.Get();
+			ID3D11SamplerState* cmp = mSamShadowCmp.Get();
+			ID3D11ShaderResourceView* shSRV = mShadowSRV.Get();
+			ctx->PSSetConstantBuffers(6, 1, &b6r);
+			ctx->PSSetSamplers(1, 1, &cmp);
+			ctx->PSSetShaderResources(5, 1, &shSRV);
+
+			// Toon 쓰면 t6도 다시
+			if (mDbg.useToon && m_pRampSRV) {
+				ctx->PSSetShaderResources(6, 1, &m_pRampSRV);
+			}
+		}
 
 		// 3) Sky는 lighting 후에 (네 셰이더는 geometry 없으면 검정 뿌림)
 		RenderSkyPass(ctx, viewNoTrans);

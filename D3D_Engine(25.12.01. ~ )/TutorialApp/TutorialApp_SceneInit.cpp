@@ -354,7 +354,7 @@ bool TutorialApp::InitScene()
 	// =========================================================
 	mTreeX.pos = { -100, -150, 100 };  mTreeX.initPos = mTreeX.pos;  mTreeX.scl = { 100,100,100 };
 	mCharX.pos = { 100, -150, 100 };  mCharX.initPos = mCharX.pos;
-	mZeldaX.pos = { 0, -150, 250 };  mZeldaX.initPos = mZeldaX.pos;
+	mZeldaX.pos = { 0, -150, 350 };  mZeldaX.initPos = mZeldaX.pos;
 	mBoxX.pos = { -200, -150, 400 }; mBoxX.scl = { 0.2f,0.2f,0.2f };
 	mSkinX.pos = { 200, -150, 400 };
 	mFemaleX.pos = { 0, -180, 200 };
