@@ -415,7 +415,7 @@ void TutorialApp::UpdateImGUI()
 				DirToYawPitch(dirUI, m_LightYaw, m_LightPitch);
 			}
 
-			ImGui::Checkbox(u8"디렉셔널 라이트 사용##dir", &mDbg.dirLightEnable);
+			
 
 			// yaw/pitch는 "보조"로 남기기 (원하면 접어두기)
 			if (ImGui::CollapsingHeader(u8"Yaw/Pitch (보조 컨트롤)"))
@@ -444,6 +444,9 @@ void TutorialApp::UpdateImGUI()
 				ImGui::Combo("Falloff##pt", &mPoint.falloffMode, falloffs, IM_ARRAYSIZE(falloffs));
 			}
 
+
+			ImGui::Checkbox("Show Marker##pt", &mPoint.showMarker);
+			ImGui::DragFloat("Marker Size##pt", &mPoint.markerSize, 0.5f, 1.0f, 500.0f, "%.1f");
 			ImGui::SeparatorText("Point Shadow (Cube)");
 			ImGui::Checkbox("Enable##ptshadow", &mPoint.shadowEnable);
 			ImGui::DragFloat("Bias##ptshadow", &mPoint.shadowBias, 0.0005f, 0.0f, 0.05f, "%.5f");

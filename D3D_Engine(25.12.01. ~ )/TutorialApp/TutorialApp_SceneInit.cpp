@@ -352,7 +352,37 @@ bool TutorialApp::InitScene()
 		D3D11_BUFFER_DESC ibd{ sizeof(idx), D3D11_USAGE_IMMUTABLE, D3D11_BIND_INDEX_BUFFER };
 		D3D11_SUBRESOURCE_DATA iinit{ idx };
 		HR_T(m_pDevice->CreateBuffer(&ibd, &iinit, &m_pArrowIB));
-	}
+	
+// =========================================================
+// 5b) PointLight marker quad (billboard)
+// =========================================================
+{
+	struct V { DirectX::XMFLOAT3 p; DirectX::XMFLOAT4 c; };
+	const DirectX::XMFLOAT4 W = { 1,1,1,1 };
+
+	V v[4] =
+	{
+		{{-0.5f,-0.5f,0.0f}, W},
+		{{+0.5f,-0.5f,0.0f}, W},
+		{{+0.5f,+0.5f,0.0f}, W},
+		{{-0.5f,+0.5f,0.0f}, W},
+	};
+
+	const uint16_t idx[6] = { 0,1,2, 0,2,3 };
+
+	D3D11_BUFFER_DESC vbd{}; vbd.ByteWidth = sizeof(v);
+	vbd.Usage = D3D11_USAGE_IMMUTABLE;
+	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	D3D11_SUBRESOURCE_DATA vinit{ v };
+	HR_T(m_pDevice->CreateBuffer(&vbd, &vinit, &m_pPointMarkerVB));
+
+	D3D11_BUFFER_DESC ibd{}; ibd.ByteWidth = sizeof(idx);
+	ibd.Usage = D3D11_USAGE_IMMUTABLE;
+	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	D3D11_SUBRESOURCE_DATA iinit{ (void*)idx };
+	HR_T(m_pDevice->CreateBuffer(&ibd, &iinit, &m_pPointMarkerIB));
+}
+}
 
 	// =========================================================
 	// 6) Initial transforms
@@ -840,6 +870,8 @@ void TutorialApp::UninitScene()
 	SAFE_RELEASE(m_pDbgRS);
 	SAFE_RELEASE(m_pArrowIB);
 	SAFE_RELEASE(m_pArrowVB);
+	SAFE_RELEASE(m_pPointMarkerIB);
+	SAFE_RELEASE(m_pPointMarkerVB);
 	SAFE_RELEASE(m_pDbgIL);
 	SAFE_RELEASE(m_pDbgVS);
 	SAFE_RELEASE(m_pDbgPS);

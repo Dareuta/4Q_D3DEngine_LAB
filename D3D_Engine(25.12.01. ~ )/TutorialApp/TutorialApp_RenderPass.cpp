@@ -1142,6 +1142,62 @@ void TutorialApp::RenderDebugPass(
 		SAFE_RELEASE(oRS);
 	}
 
+
+	// ------------------------------------------------------------
+	// PointLight marker (billboard quad)
+	// ------------------------------------------------------------
+	if (mPoint.enable && mPoint.showMarker && m_pPointMarkerVB && m_pPointMarkerIB)
+	{
+		using namespace DirectX::SimpleMath;
+
+		const Vector3 eye = m_Camera.m_World.Translation();
+		Matrix worldMarker = Matrix::CreateScale(mPoint.markerSize) *
+			Matrix::CreateBillboard(mPoint.pos, eye, Vector3::UnitY, nullptr);
+
+		ConstantBuffer local = baseCB;
+		local.mWorld = XMMatrixTranspose(worldMarker);
+		local.mWorldInvTranspose = worldMarker.Invert();
+		ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &local, 0, 0);
+		ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+
+		// 상태 백업
+		ID3D11RasterizerState* oRS = nullptr; ctx->RSGetState(&oRS);
+		ID3D11DepthStencilState* oDSS = nullptr; UINT oRef = 0; ctx->OMGetDepthStencilState(&oDSS, &oRef);
+		ID3D11BlendState* oBS = nullptr; float oBF[4]; UINT oSM = 0xFFFFFFFF; ctx->OMGetBlendState(&oBS, oBF, &oSM);
+		ID3D11InputLayout* oIL = nullptr; ctx->IAGetInputLayout(&oIL);
+		ID3D11VertexShader* oVS = nullptr; ctx->VSGetShader(&oVS, nullptr, 0);
+		ID3D11PixelShader* oPS = nullptr; ctx->PSGetShader(&oPS, nullptr, 0);
+
+		float bf[4] = { 0,0,0,0 };
+		ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
+		ctx->OMSetDepthStencilState(m_pDSS_Disabled ? m_pDSS_Disabled : m_pDSS_Opaque, 0);
+		if (m_pDbgRS) ctx->RSSetState(m_pDbgRS);
+
+		UINT stride = sizeof(DirectX::XMFLOAT3) + sizeof(DirectX::XMFLOAT4), offset = 0;
+		ctx->IASetInputLayout(m_pDbgIL);
+		ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		ctx->IASetVertexBuffers(0, 1, &m_pPointMarkerVB, &stride, &offset);
+		ctx->IASetIndexBuffer(m_pPointMarkerIB, DXGI_FORMAT_R16_UINT, 0);
+		ctx->VSSetShader(m_pDbgVS, nullptr, 0);
+		ctx->PSSetShader(m_pDbgPS, nullptr, 0);
+
+		const DirectX::XMFLOAT4 kMagenta = { 1.0f, 0.0f, 1.0f, 1.0f };
+		ctx->UpdateSubresource(m_pDbgCB, 0, nullptr, &kMagenta, 0, 0);
+		ctx->PSSetConstantBuffers(3, 1, &m_pDbgCB);
+
+		ctx->DrawIndexed(6, 0, 0);
+
+		// 상태 복구
+		ctx->VSSetShader(oVS, nullptr, 0);
+		ctx->PSSetShader(oPS, nullptr, 0);
+		ctx->IASetInputLayout(oIL);
+		ctx->OMSetBlendState(oBS, oBF, oSM);
+		ctx->OMSetDepthStencilState(oDSS, oRef);
+		ctx->RSSetState(oRS);
+
+		SAFE_RELEASE(oVS); SAFE_RELEASE(oPS); SAFE_RELEASE(oIL);
+		SAFE_RELEASE(oBS); SAFE_RELEASE(oDSS); SAFE_RELEASE(oRS);
+	}
 	//=============================================
 }
 

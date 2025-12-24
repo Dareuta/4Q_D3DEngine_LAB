@@ -329,6 +329,8 @@ private:
 	ID3D11InputLayout* m_pDbgIL = nullptr;
 	ID3D11Buffer* m_pArrowVB = nullptr;
 	ID3D11Buffer* m_pArrowIB = nullptr;
+	ID3D11Buffer* m_pPointMarkerVB = nullptr; // PointLight marker quad
+	ID3D11Buffer* m_pPointMarkerIB = nullptr;
 	ID3D11RasterizerState* m_pDbgRS = nullptr; // Cull None
 	ID3D11Buffer* m_pDbgCB = nullptr;    // PS b3 (색상)
 
@@ -447,6 +449,10 @@ private:
 		float intensity = 30.0f;  	// HDR 기준: 1.0 넘어도 OK
 		float range = 600.0f;
 		int   falloffMode = 0;     	// 0: smooth, 1: inverse-square
+
+		// Debug marker (billboard quad)
+		bool  showMarker = true;
+		float markerSize = 25.0f;
 
 		// (옵션) Point Shadow (Cube)
 		bool  shadowEnable = false;
