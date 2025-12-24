@@ -262,7 +262,10 @@ void TutorialApp::RenderPointShadowPass_Cube(
 		Vector3(0,0,-1), Vector3(0,0,1),
 		Vector3::UnitY, Vector3::UnitY
 	};
-	const Matrix P = Matrix::CreatePerspectiveFieldOfView(DirectX::XM_PIDIV2, 1.0f, 0.1f, mPoint.range);
+	//const Matrix P = Matrix::CreatePerspectiveFieldOfView(DirectX::XM_PIDIV2, 1.0f, 0.1f, mPoint.range);
+	// NOTE: SimpleMath CreatePerspectiveFieldOfView/CreateLookAt are RH by default.
+	// The rest of this project is LH, so use DirectXMath LH helpers to avoid cubemap face flips.
+	const Matrix P = XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV2, 1.0f, 0.1f, mPoint.range);
 
 	// Draw helper (StaticMesh)
 	auto DrawPointDepth_Static = [&](StaticMesh& mesh, const std::vector<MaterialGPU>& mtls, const Matrix& world, const Matrix& V, bool alphaCut)
@@ -318,7 +321,8 @@ void TutorialApp::RenderPointShadowPass_Cube(
 		ctx->ClearRenderTargetView(rtv, clear);
 		ctx->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-		const Matrix V = Matrix::CreateLookAt(pos, pos + dirs[face], ups[face]);
+		//const Matrix V = Matrix::CreateLookAt(pos, pos + dirs[face], ups[face]);
+		const Matrix V = XMMatrixLookAtLH(pos, pos + dirs[face], ups[face]);
 
 		DrawPointShadowStatic(mTreeX, gTree, gTreeMtls, V);
 		DrawPointShadowStatic(mCharX, gChar, gCharMtls, V);
