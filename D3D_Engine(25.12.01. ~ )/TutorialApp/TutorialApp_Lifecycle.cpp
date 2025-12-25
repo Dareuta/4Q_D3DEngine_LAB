@@ -1,356 +1,435 @@
 ﻿// OnInitialize/OnUninitialize/OnUpdate/OnRender/WndProc
-
 #include "../../D3D_Core/pch.h"
 #include "TutorialApp.h"
 
 bool TutorialApp::OnInitialize()
 {
-	if (!InitD3D())
-		return false;
+    // =========================================================================
+    // 0) D3D Core
+    // =========================================================================
+    if (!InitD3D())
+        return false;
 
-	if (!CreateSceneHDRResources(m_pDevice))
-		return false;
+    // =========================================================================
+    // 1) Render Targets (HDR Scene / GBuffer)
+    // =========================================================================
+    if (!CreateSceneHDRResources(m_pDevice))
+        return false;
 
-	CreateSceneHDRResources(m_pDevice);
-	CreateGBufferResources(m_pDevice);
+    if (!CreateGBufferResources(m_pDevice))
+        return false;
 
 #ifdef _DEBUG
-	if (!InitImGUI())
-		return false;
+    // =========================================================================
+    // 2) ImGui
+    // =========================================================================
+    if (!InitImGUI())
+        return false;
 #endif
 
-	if (!InitScene())
-		return false;
+    // =========================================================================
+    // 3) Scene / Assets
+    // =========================================================================
+    if (!InitScene())
+        return false;
 
-	return true;
+    return true;
 }
 
 void TutorialApp::OnUninitialize()
 {
-	UninitScene();
+    // =========================================================================
+    // 0) Scene
+    // =========================================================================
+    UninitScene();
 
 #ifdef _DEBUG
-	UninitImGUI();
+    // =========================================================================
+    // 1) ImGui
+    // =========================================================================
+    UninitImGUI();
 #endif
-	UninitD3D();
+
+    // =========================================================================
+    // 2) D3D Core
+    // =========================================================================
+    UninitD3D();
 }
 
 void TutorialApp::OnUpdate()
 {
-	static float tHold = 0.0f;
-	if (!mDbg.freezeTime) tHold = GameTimer::m_Instance->TotalTime();
-	float t = tHold;
+    // =========================================================================
+    // 0) Time (FreezeTime 대응)
+    // =========================================================================
+    static float tHold = 0.0f;
+    if (!mDbg.freezeTime) tHold = GameTimer::m_Instance->TotalTime();
+    const float t = tHold;
 
-	XMMATRIX mSpin = XMMatrixRotationY(t * spinSpeed);
+    // =========================================================================
+    // 1) Simple world animation (기존 큐브)
+    // =========================================================================
+    const XMMATRIX mSpin = XMMatrixRotationY(t * spinSpeed);
+    const XMMATRIX mScaleA = XMMatrixScaling(cubeScale.x, cubeScale.y, cubeScale.z);
+    const XMMATRIX mTranslateA = XMMatrixTranslation(cubeTransformA.x, cubeTransformA.y, cubeTransformA.z);
+    m_World = mScaleA * mSpin * mTranslateA;
 
-	XMMATRIX mScaleA = XMMatrixScaling(cubeScale.x, cubeScale.y, cubeScale.z);
-	XMMATRIX mTranslateA = XMMatrixTranslation(cubeTransformA.x, cubeTransformA.y, cubeTransformA.z);
-	m_World = mScaleA * mSpin * mTranslateA;
+    // =========================================================================
+    // 2) Animation update (Rigid / Skinned)
+    // =========================================================================
+    const double dt = (double)GameTimer::m_Instance->DeltaTime();
 
-	// TutorialApp.cpp::OnUpdate()
+    // ---- BoxHuman (Rigid) ----
+    if (mBoxRig)
+    {
+        if (!mDbg.freezeTime && mBoxAC.play) mBoxAC.t += dt * mBoxAC.speed;
 
-	const double dt = (double)GameTimer::m_Instance->DeltaTime();
+        const double durSec = mBoxRig->GetClipDurationSec();
+        if (durSec > 0.0)
+        {
+            if (mBoxAC.loop)
+            {
+                mBoxAC.t = fmod(mBoxAC.t, durSec);
+                if (mBoxAC.t < 0.0) mBoxAC.t += durSec;
+            }
+            else
+            {
+                if (mBoxAC.t >= durSec) { mBoxAC.t = durSec; mBoxAC.play = false; }
+                if (mBoxAC.t < 0.0) { mBoxAC.t = 0.0;   mBoxAC.play = false; }
+            }
+        }
 
-	// --- BoxHuman ---
-	if (mBoxRig) {
-		if (!mDbg.freezeTime && mBoxAC.play) mBoxAC.t += dt * mBoxAC.speed;
-		const double durSec = mBoxRig->GetClipDurationSec();
-		if (durSec > 0.0) {
-			if (mBoxAC.loop) {
-				mBoxAC.t = fmod(mBoxAC.t, durSec); if (mBoxAC.t < 0.0) mBoxAC.t += durSec;
-			}
-			else {
-				if (mBoxAC.t >= durSec) { mBoxAC.t = durSec; mBoxAC.play = false; } // 끝에서 정지
-				if (mBoxAC.t < 0.0) { mBoxAC.t = 0.0;   mBoxAC.play = false; } // 앞에서 정지
-			}
-		}
-		mBoxRig->EvaluatePose(mBoxAC.t, mBoxAC.loop);  // ← loop 전달
-	}
+        mBoxRig->EvaluatePose(mBoxAC.t, mBoxAC.loop);
+    }
 
-	// --- Skinned ---
-	if (mSkinRig) {
-		if (!mDbg.freezeTime && mSkinAC.play) mSkinAC.t += dt * mSkinAC.speed;
-		const double durSec = mSkinRig->DurationSec();
-		if (durSec > 0.0) {
-			if (mSkinAC.loop) {
-				mSkinAC.t = fmod(mSkinAC.t, durSec); if (mSkinAC.t < 0.0) mSkinAC.t += durSec;
-			}
-			else {
-				if (mSkinAC.t >= durSec) { mSkinAC.t = durSec; mSkinAC.play = false; }
-				if (mSkinAC.t < 0.0) { mSkinAC.t = 0.0;   mSkinAC.play = false; }
-			}
-		}
-		mSkinRig->EvaluatePose(mSkinAC.t, mSkinAC.loop);
-	}
+    // ---- Skinned ----
+    if (mSkinRig)
+    {
+        if (!mDbg.freezeTime && mSkinAC.play) mSkinAC.t += dt * mSkinAC.speed;
+
+        const double durSec = mSkinRig->DurationSec();
+        if (durSec > 0.0)
+        {
+            if (mSkinAC.loop)
+            {
+                mSkinAC.t = fmod(mSkinAC.t, durSec);
+                if (mSkinAC.t < 0.0) mSkinAC.t += durSec;
+            }
+            else
+            {
+                if (mSkinAC.t >= durSec) { mSkinAC.t = durSec; mSkinAC.play = false; }
+                if (mSkinAC.t < 0.0) { mSkinAC.t = 0.0;   mSkinAC.play = false; }
+            }
+        }
+
+        mSkinRig->EvaluatePose(mSkinAC.t, mSkinAC.loop);
+    }
 }
 
 void TutorialApp::OnRender()
 {
-	auto* ctx = m_pDeviceContext;
+    auto* ctx = m_pDeviceContext;
 
-	ID3D11SamplerState* s0 = m_pSamplerLinear;
-	ID3D11SamplerState* s1 = mSamShadowCmp.Get();
-	ID3D11SamplerState* s2 = m_pSamplerLinear;
-	ID3D11SamplerState* s3 = mSamIBLClamp ? mSamIBLClamp.Get() : m_pSamplerLinear;
+    // =========================================================================
+    // 0) Common sampler binding (s0~s3)
+    // =========================================================================
+    ID3D11SamplerState* s0 = m_pSamplerLinear;                  // s0: 일반 텍스처
+    ID3D11SamplerState* s1 = mSamShadowCmp.Get();               // s1: shadow compare
+    ID3D11SamplerState* s2 = m_pSamplerLinear;                  // s2: ramp/기타 (임시)
+    ID3D11SamplerState* s3 = mSamIBLClamp ? mSamIBLClamp.Get()  // s3: IBL clamp
+        : m_pSamplerLinear;
 
-	ID3D11SamplerState* samps[4] = { s0, s1, s2, s3 };
-	ctx->PSSetSamplers(0, 4, samps);
+    ID3D11SamplerState* samps[4] = { s0, s1, s2, s3 };
+    ctx->PSSetSamplers(0, 4, samps);
 
+    // =========================================================================
+    // 1) Shadow camera + Shadow CB 업데이트 (라이트 뷰/프로젝션)
+    // =========================================================================
+    UpdateLightCameraAndShadowCB(ctx);
 
+    // =========================================================================
+    // 2) Camera params clamp + Projection 갱신
+    // =========================================================================
+    if (m_FovDegree < 10.0f)       m_FovDegree = 10.0f;
+    else if (m_FovDegree > 120.0f) m_FovDegree = 120.0f;
 
-	// 0) 라이트 카메라/섀도우 CB 업데이트 
+    if (m_Near < 0.0001f)          m_Near = 0.0001f;
 
-	UpdateLightCameraAndShadowCB(ctx); // mLightView, mLightProj, mShadowVP, mCB_Shadow
+    const float minFar = m_Near + 0.001f;
+    if (m_Far < minFar)            m_Far = minFar;
 
-	// ───────────────────────────────────────────────────────────────
-	// 1) 기본 파라미터 클램프 + 메인 RT 클리어
-	// ───────────────────────────────────────────────────────────────
+    const float aspect = m_ClientWidth / (float)m_ClientHeight;
+    m_Projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FovDegree), aspect, m_Near, m_Far);
 
-	if (m_FovDegree < 10.0f)       m_FovDegree = 10.0f;
-	else if (m_FovDegree > 120.0f) m_FovDegree = 120.0f;
-	if (m_Near < 0.0001f)          m_Near = 0.0001f;
-	float minFar = m_Near + 0.001f;
-	if (m_Far < minFar)            m_Far = minFar;
+    // =========================================================================
+    // 3) Rasterizer 선택 (Wire / CullNone / Default)
+    // =========================================================================
+    if (mDbg.wireframe && m_pWireRS)         ctx->RSSetState(m_pWireRS);
+    else if (mDbg.cullNone && m_pDbgRS)      ctx->RSSetState(m_pDbgRS);
+    else                                     ctx->RSSetState(m_pCullBackRS);
 
-	const float aspect = m_ClientWidth / (float)m_ClientHeight;
-	m_Projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FovDegree), aspect, m_Near, m_Far);
+    // =========================================================================
+    // 4) Main RT 선택 (SceneHDR vs BackBuffer) + Clear
+    //    - SRV/RTV 충돌 방지: (특히 ToneMap에서 t0 썼으면 해제)
+    // =========================================================================
+    ID3D11ShaderResourceView* nullSRV[16] = {};
+    ctx->PSSetShaderResources(0, 16, nullSRV);
 
-	// RS 선택
-	if (mDbg.wireframe && m_pWireRS)         ctx->RSSetState(m_pWireRS);
-	else if (mDbg.cullNone && m_pDbgRS)      ctx->RSSetState(m_pDbgRS);
-	else                                     ctx->RSSetState(m_pCullBackRS);
+    ID3D11RenderTargetView* mainRTV = m_pRenderTargetView;
+    if (mTone.useSceneHDR && mSceneHDRRTV.Get())
+        mainRTV = mSceneHDRRTV.Get();
 
-	const float clearColor[4] = { color[0], color[1], color[2], color[3] };
+    ctx->OMSetRenderTargets(1, &mainRTV, m_pDepthStencilView);
 
-	// (안전빵) 이전 프레임 ToneMap에서 t0에 SRV 걸렸을 수 있으니 해제
-	ID3D11ShaderResourceView* nullSRV0[1] = { nullptr };
-	ctx->PSSetShaderResources(0, 1, nullSRV0);
+    const float clearColor[4] = { color[0], color[1], color[2], color[3] };
+    ctx->ClearRenderTargetView(mainRTV, clearColor);
+    ctx->ClearDepthStencilView(m_pDepthStencilView,
+        D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-	// 메인 RT 선택: SceneHDR or BackBuffer
-	ID3D11RenderTargetView* mainRTV = m_pRenderTargetView;
-	if (mTone.useSceneHDR && mSceneHDRRTV.Get())
-		mainRTV = mSceneHDRRTV.Get();
+    // =========================================================================
+    // 5) Per-frame common CB 업로드 (b0/b1/b8/b12)
+    // =========================================================================
+    // ---- View ----
+    m_Camera.GetViewMatrix(view);
+    Matrix viewNoTrans = view;
+    viewNoTrans._41 = viewNoTrans._42 = viewNoTrans._43 = 0.0f;
 
-	ctx->OMSetRenderTargets(1, &mainRTV, m_pDepthStencilView);
+    // ---- CB0 (b0) ----
+    ConstantBuffer cb{};
+    cb.mWorld = XMMatrixTranspose(Matrix::Identity);
+    cb.mWorldInvTranspose = XMMatrixInverse(nullptr, Matrix::Identity);
+    cb.mView = XMMatrixTranspose(view);
+    cb.mProjection = XMMatrixTranspose(m_Projection);
 
-	// Clear
-	ctx->ClearRenderTargetView(mainRTV, clearColor);
-	ctx->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+    // dir light from yaw/pitch
+    XMMATRIX R = XMMatrixRotationRollPitchYaw(m_LightPitch, m_LightYaw, 0.0f);
+    XMVECTOR base = XMVector3Normalize(XMVectorSet(0, 0, 1, 0));
+    XMVECTOR L = XMVector3Normalize(XMVector3TransformNormal(base, R));
+    Vector3 dirV = { XMVectorGetX(L), XMVectorGetY(L), XMVectorGetZ(L) };
 
+    cb.vLightDir = Vector4(dirV.x, dirV.y, dirV.z, 0.0f);
 
-	// ───────────────────────────────────────────────────────────────
-	// 2) 공통 CB0(b0) / Blinn(b1) 업로드 (메인 카메라 기준)
-	// ───────────────────────────────────────────────────────────────
+    const float dirOn = mDbg.dirLightEnable ? 1.0f : 0.0f;
+    cb.vLightColor = Vector4(
+        m_LightColor.x * m_LightIntensity * dirOn,
+        m_LightColor.y * m_LightIntensity * dirOn,
+        m_LightColor.z * m_LightIntensity * dirOn,
+        dirOn);
 
-	m_Camera.GetViewMatrix(view);
-	Matrix viewNoTrans = view; viewNoTrans._41 = viewNoTrans._42 = viewNoTrans._43 = 0.0f;
+    ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cb, 0, 0);
+    ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+    ctx->PSSetConstantBuffers(0, 1, &m_pConstantBuffer);
 
-	ConstantBuffer cb{};
-	cb.mWorld = XMMatrixTranspose(Matrix::Identity);
-	cb.mWorldInvTranspose = XMMatrixInverse(nullptr, Matrix::Identity);
-	cb.mView = XMMatrixTranspose(view);
-	cb.mProjection = XMMatrixTranspose(m_Projection);
+    // ---- BP (b1) ----
+    const Vector3 eye = m_Camera.m_World.Translation();
 
-	// 디렉셔널 라이트(dir from yaw/pitch)
-	XMMATRIX R = XMMatrixRotationRollPitchYaw(m_LightPitch, m_LightYaw, 0.0f);
-	XMVECTOR base = XMVector3Normalize(XMVectorSet(0, 0, 1, 0));
-	XMVECTOR L = XMVector3Normalize(XMVector3TransformNormal(base, R));
-	Vector3  dirV = { XMVectorGetX(L), XMVectorGetY(L), XMVectorGetZ(L) };
-	cb.vLightDir = Vector4(dirV.x, dirV.y, dirV.z, 0.0f);
-	float dirOn = mDbg.dirLightEnable ? 1.0f : 0.0f;
-	cb.vLightColor = Vector4(
-		m_LightColor.x * m_LightIntensity * dirOn,
-		m_LightColor.y * m_LightIntensity * dirOn,
-		m_LightColor.z * m_LightIntensity * dirOn,
-		dirOn);
+    BlinnPhongCB bp{};
+    bp.EyePosW = Vector4(eye.x, eye.y, eye.z, 1);
+    bp.kA = Vector4(m_Ka.x, m_Ka.y, m_Ka.z, 0);
+    bp.kSAlpha = Vector4(m_Ks, m_Shininess, 0, 0);
+    bp.I_ambient = Vector4(m_Ia.x, m_Ia.y, m_Ia.z, 0);
 
-	ctx->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cb, 0, 0);
-	ctx->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
-	ctx->PSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+    ctx->UpdateSubresource(m_pBlinnCB, 0, nullptr, &bp, 0, 0);
+    ctx->PSSetConstantBuffers(1, 1, &m_pBlinnCB);
 
-	// b1
-	BlinnPhongCB bp{};
-	const Vector3 eye = m_Camera.m_World.Translation();
-	bp.EyePosW = Vector4(eye.x, eye.y, eye.z, 1);
-	bp.kA = Vector4(m_Ka.x, m_Ka.y, m_Ka.z, 0);
-	bp.kSAlpha = Vector4(m_Ks, m_Shininess, 0, 0);
-	bp.I_ambient = Vector4(m_Ia.x, m_Ia.y, m_Ia.z, 0);
-	ctx->UpdateSubresource(m_pBlinnCB, 0, nullptr, &bp, 0, 0);
-	ctx->PSSetConstantBuffers(1, 1, &m_pBlinnCB);
+    // ---- Deferred point light CB (b12) ----
+    if (mCB_DeferredLights)
+    {
+        CB_DeferredLights dl{};
+        dl.eyePosW = DirectX::XMFLOAT4(eye.x, eye.y, eye.z, 1.0f);
+        dl.meta[0] = 1u;
+        dl.meta[1] = mPoint.enable ? 1u : 0u;
+        dl.meta[2] = (uint32_t)max(0, min(1, mPoint.falloffMode));
+        dl.meta[3] = 0u;
 
-	// b12: Deferred point light(s) 업로드
-	if (mCB_DeferredLights)
-	{
-		CB_DeferredLights dl{};
-		dl.eyePosW = DirectX::XMFLOAT4(eye.x, eye.y, eye.z, 1.0f);
-		dl.meta[0] = 1u;
-		dl.meta[1] = mPoint.enable ? 1u : 0u;
-		dl.meta[2] = (uint32_t)max(0, min(1, mPoint.falloffMode));
-		dl.meta[3] = 0u;
+        dl.pointPosRange[0] = DirectX::XMFLOAT4(mPoint.pos.x, mPoint.pos.y, mPoint.pos.z, mPoint.range);
+        dl.pointColorInt[0] = DirectX::XMFLOAT4(mPoint.color.x, mPoint.color.y, mPoint.color.z, mPoint.intensity);
 
-		dl.pointPosRange[0] = DirectX::XMFLOAT4(mPoint.pos.x, mPoint.pos.y, mPoint.pos.z, mPoint.range);
-		dl.pointColorInt[0] = DirectX::XMFLOAT4(mPoint.color.x, mPoint.color.y, mPoint.color.z, mPoint.intensity);
+        ctx->UpdateSubresource(mCB_DeferredLights.Get(), 0, nullptr, &dl, 0, 0);
+        ID3D11Buffer* b12 = mCB_DeferredLights.Get();
+        ctx->PSSetConstantBuffers(12, 1, &b12);
+    }
 
-		ctx->UpdateSubresource(mCB_DeferredLights.Get(), 0, nullptr, &dl, 0, 0);
-		ID3D11Buffer* b12 = mCB_DeferredLights.Get();
-		ctx->PSSetConstantBuffers(12, 1, &b12);
-	}
+    // ---- PBR params (b8) ----
+    CB_PBRParams pbr{};
+    pbr.useBaseColorTex = mPbr.useBaseColorTex ? 1u : 0u;
+    pbr.useNormalTex = mPbr.useNormalTex ? 1u : 0u;
+    pbr.useMetalTex = mPbr.useMetalTex ? 1u : 0u;
+    pbr.useRoughTex = mPbr.useRoughTex ? 1u : 0u;
 
-	// PBR params update (매 프레임)
-	CB_PBRParams pbr{};
-	pbr.useBaseColorTex = mPbr.useBaseColorTex ? 1u : 0u;
-	pbr.useNormalTex = mPbr.useNormalTex ? 1u : 0u;
-	pbr.useMetalTex = mPbr.useMetalTex ? 1u : 0u;
-	pbr.useRoughTex = mPbr.useRoughTex ? 1u : 0u;
+    pbr.baseColorOverride = { mPbr.baseColor.x, mPbr.baseColor.y, mPbr.baseColor.z, 1.0f };
+    pbr.m_r_n_flags = { mPbr.metallic, mPbr.roughness, mPbr.normalStrength, mPbr.flipNormalY ? 1.0f : 0.0f };
 
-	pbr.baseColorOverride = { mPbr.baseColor.x, mPbr.baseColor.y, mPbr.baseColor.z, 1.0f };
-	pbr.m_r_n_flags = { mPbr.metallic, mPbr.roughness, mPbr.normalStrength, mPbr.flipNormalY ? 1.0f : 0.0f };
+    pbr.envDiff = XMFLOAT4(mPbr.envDiffColor.x, mPbr.envDiffColor.y, mPbr.envDiffColor.z, mPbr.envDiffIntensity);
+    pbr.envSpec = XMFLOAT4(mPbr.envSpecColor.x, mPbr.envSpecColor.y, mPbr.envSpecColor.z, mPbr.envSpecIntensity);
+    pbr.envInfo = XMFLOAT4(mPrefilterMaxMip, 0, 0, 0);
 
-	pbr.envDiff = XMFLOAT4(mPbr.envDiffColor.x, mPbr.envDiffColor.y, mPbr.envDiffColor.z, mPbr.envDiffIntensity);
-	pbr.envSpec = XMFLOAT4(mPbr.envSpecColor.x, mPbr.envSpecColor.y, mPbr.envSpecColor.z, mPbr.envSpecIntensity);
-	pbr.envInfo = XMFLOAT4(mPrefilterMaxMip, 0, 0, 0);
+    ctx->UpdateSubresource(m_pPBRParamsCB, 0, nullptr, &pbr, 0, 0);
+    ctx->PSSetConstantBuffers(8, 1, &m_pPBRParamsCB);
 
-	ctx->UpdateSubresource(m_pPBRParamsCB, 0, nullptr, &pbr, 0, 0);
-	ctx->PSSetConstantBuffers(8, 1, &m_pPBRParamsCB); // b8
+    // =========================================================================
+    // 6) Static mesh pipeline 기본 바인드 (Forward 경로용 기본값)
+    // =========================================================================
+    ctx->IASetInputLayout(m_pMeshIL);
+    ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    ctx->VSSetShader(m_pMeshVS, nullptr, 0);
+    ctx->PSSetShader(m_pMeshPS, nullptr, 0);
 
-	// 공통 셰이더(정적 메쉬) 기본 바인드
-	ctx->IASetInputLayout(m_pMeshIL);
-	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	ctx->VSSetShader(m_pMeshVS, nullptr, 0);
-	ctx->PSSetShader(m_pMeshPS, nullptr, 0);
-	//if (m_pSamplerLinear) ctx->PSSetSamplers(0, 1, &m_pSamplerLinear);
+    // =========================================================================
+    // 7) Shadow passes (DepthOnly)
+    // =========================================================================
+    RenderShadowPass_Main(ctx, cb);
+    RenderPointShadowPass_Cube(ctx, cb);
 
-	//============================================================================================
+    // =========================================================================
+    // 8) Shadow bind (t5/s1/b6) + PointShadow bind (t10/b13)
+    // =========================================================================
+    auto BindShadowForShading = [&]()
+        {
+            ID3D11Buffer* b6 = mCB_Shadow.Get();
+            ID3D11SamplerState* cmp = mSamShadowCmp.Get();
+            ID3D11ShaderResourceView* shSRV = mShadowSRV.Get();
 
-	// 3) SHADOW PASS (DepthOnly)  
-	RenderShadowPass_Main(ctx, cb);
-	RenderPointShadowPass_Cube(ctx, cb);
+            ctx->PSSetConstantBuffers(6, 1, &b6);
+            ctx->PSSetSamplers(1, 1, &cmp);
+            ctx->PSSetShaderResources(5, 1, &shSRV);
+        };
 
-	// 5) 본 패스에서 섀도우 샘플 바인드 (PS: t5/s1/b6)
-	{
-		ID3D11Buffer* b6r = mCB_Shadow.Get();
-		ID3D11SamplerState* cmp = mSamShadowCmp.Get();
-		ID3D11ShaderResourceView* shSRV = mShadowSRV.Get();
+    BindShadowForShading();
 
-		ctx->PSSetConstantBuffers(6, 1, &b6r);
-		ctx->PSSetSamplers(1, 1, &cmp);
-		ctx->PSSetShaderResources(5, 1, &shSRV);
-	}
+    // Point shadow cube (t10 / b13)
+    if (mCB_PointShadow)
+    {
+        CB_PointShadow pcb{};
+        pcb.posRange = DirectX::XMFLOAT4(mPoint.pos.x, mPoint.pos.y, mPoint.pos.z, mPoint.range);
+        pcb.params = DirectX::XMFLOAT4(mPoint.shadowBias,
+            (mPoint.enable && mPoint.shadowEnable) ? 1.0f : 0.0f, 0.0f, 0.0f);
 
-	// (옵션) Point Shadow Cube bind (PS: t10/b13)
-	{
-		if (mCB_PointShadow)
-		{
-			CB_PointShadow pcb{};
-			pcb.posRange = DirectX::XMFLOAT4(mPoint.pos.x, mPoint.pos.y, mPoint.pos.z, mPoint.range);
-			pcb.params = DirectX::XMFLOAT4(mPoint.shadowBias, (mPoint.enable && mPoint.shadowEnable) ? 1.0f : 0.0f, 0.0f, 0.0f);
-			ctx->UpdateSubresource(mCB_PointShadow.Get(), 0, nullptr, &pcb, 0, 0);
+        ctx->UpdateSubresource(mCB_PointShadow.Get(), 0, nullptr, &pcb, 0, 0);
+        ID3D11Buffer* b13 = mCB_PointShadow.Get();
+        ctx->PSSetConstantBuffers(13, 1, &b13);
+    }
 
-			ID3D11Buffer* b13 = mCB_PointShadow.Get();
-			ctx->PSSetConstantBuffers(13, 1, &b13);
-		}
+    {
+        ID3D11ShaderResourceView* srv = (mPoint.enable && mPoint.shadowEnable)
+            ? mPointShadowSRV.Get()
+            : nullptr;
+        ctx->PSSetShaderResources(10, 1, &srv);
+    }
 
-		ID3D11ShaderResourceView* srv = (mPoint.enable && mPoint.shadowEnable) ? mPointShadowSRV.Get() : nullptr;
-		ctx->PSSetShaderResources(10, 1, &srv);
-	}
+    // =========================================================================
+    // 9) Toon (t6/b7) bind (옵션)
+    // =========================================================================
+    {
+        ToonCB_ t{};
+        t.useToon = mDbg.useToon ? 1u : 0u;
+        t.halfLambert = mDbg.toonHalfLambert ? 1u : 0u;
+        t.specStep = mDbg.toonSpecStep;
+        t.specBoost = mDbg.toonSpecBoost;
+        t.shadowMin = mDbg.toonShadowMin;
 
-	// === Toon ramp bind (PS: t6/b7) ===
-	{
-		//툰 셰이딩 바인드
-		ToonCB_ t{};
-		t.useToon = mDbg.useToon ? 1u : 0u;
-		t.halfLambert = mDbg.toonHalfLambert ? 1u : 0u;
-		t.specStep = mDbg.toonSpecStep;
-		t.specBoost = mDbg.toonSpecBoost;
-		t.shadowMin = mDbg.toonShadowMin;
+        if (m_pToonCB)
+        {
+            ctx->UpdateSubresource(m_pToonCB, 0, nullptr, &t, 0, 0);
+            ctx->PSSetConstantBuffers(7, 1, &m_pToonCB);
+        }
+        if (m_pRampSRV && mDbg.useToon)
+        {
+            ctx->PSSetShaderResources(6, 1, &m_pRampSRV);
+        }
+    }
 
-		if (m_pToonCB) {
-			ctx->UpdateSubresource(m_pToonCB, 0, nullptr, &t, 0, 0);
-			ctx->PSSetConstantBuffers(7, 1, &m_pToonCB);      // PS b7
-		}
-		if (m_pRampSRV && mDbg.useToon) {
-			ctx->PSSetShaderResources(6, 1, &m_pRampSRV);     // PS t6
-		}
-	}
+    // =========================================================================
+    // 10) Main render path (Deferred vs Forward)
+    // =========================================================================
+    if (mDbg.useDeferred)
+    {
+        // ---------------------------------------------------------------------
+        // 10-A) GBuffer pass (MRT)
+        // ---------------------------------------------------------------------
+        {
+            ID3D11ShaderResourceView* null4[4] = { nullptr,nullptr,nullptr,nullptr };
+            ctx->PSSetShaderResources(0, 4, null4); // t0~t3 충돌 방지
 
-	if (mDbg.useDeferred)
-	{
-		// 1) GBuffer MRT 바인드/클리어
-		ID3D11ShaderResourceView* null4[4] = { nullptr,nullptr,nullptr,nullptr };
-		ctx->PSSetShaderResources(0, 4, null4);
+            ID3D11RenderTargetView* mrt[4] =
+            {
+                mGBufferRTV[0].Get(),
+                mGBufferRTV[1].Get(),
+                mGBufferRTV[2].Get(),
+                mGBufferRTV[3].Get(),
+            };
 
-		ID3D11RenderTargetView* mrt[4] =
-		{
-			mGBufferRTV[0].Get(),
-			mGBufferRTV[1].Get(),
-			mGBufferRTV[2].Get(),
-			mGBufferRTV[3].Get(),
-		};
-		ctx->OMSetRenderTargets(4, mrt, m_pDepthStencilView);
+            ctx->OMSetRenderTargets(4, mrt, m_pDepthStencilView);
 
-		const float clear0[4] = { 0,0,0,0 };
-		for (int i = 0; i < 4; ++i) ctx->ClearRenderTargetView(mGBufferRTV[i].Get(), clear0);
-		ctx->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+            const float clear0[4] = { 0,0,0,0 };
+            for (int i = 0; i < 4; ++i) ctx->ClearRenderTargetView(mGBufferRTV[i].Get(), clear0);
+            ctx->ClearDepthStencilView(m_pDepthStencilView,
+                D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-		RenderGBufferPass(ctx, cb);
+            RenderGBufferPass(ctx, cb);
+        }
 
-		// 2) Lighting은 메인 RT로 바꿔서 출력
-		ID3D11RenderTargetView* mainRTV2 = (mTone.useSceneHDR && mSceneHDRRTV.Get())
-			? mSceneHDRRTV.Get()
-			: m_pRenderTargetView;
+        // ---------------------------------------------------------------------
+        // 10-B) Lighting pass (Fullscreen) -> Main RTV
+        // ---------------------------------------------------------------------
+        {
+            ID3D11RenderTargetView* outRTV =
+                (mTone.useSceneHDR && mSceneHDRRTV.Get()) ? mSceneHDRRTV.Get() : m_pRenderTargetView;
 
-		ctx->OMSetRenderTargets(1, &mainRTV2, m_pDepthStencilView);
+            ctx->OMSetRenderTargets(1, &outRTV, m_pDepthStencilView);
 
-		if (mDbg.showGBufferFS) RenderGBufferDebugPass(ctx);
-		else                    RenderDeferredLightPass(ctx);
+            if (mDbg.showGBufferFS) RenderGBufferDebugPass(ctx);
+            else                    RenderDeferredLightPass(ctx);
+        }
 
-		// RenderDeferredLightPass / RenderGBufferDebugPass 이후, TransparentPass 전에 다시 바인드
-		{
-			ID3D11Buffer* b6r = mCB_Shadow.Get();
-			ID3D11SamplerState* cmp = mSamShadowCmp.Get();
-			ID3D11ShaderResourceView* shSRV = mShadowSRV.Get();
-			ctx->PSSetConstantBuffers(6, 1, &b6r);
-			ctx->PSSetSamplers(1, 1, &cmp);
-			ctx->PSSetShaderResources(5, 1, &shSRV);
+        // ---------------------------------------------------------------------
+        // 10-C) Shadow/Toon 리바인드 (Deferred pass가 상태를 건드릴 수 있음)
+        // ---------------------------------------------------------------------
+        BindShadowForShading();
+        if (mDbg.useToon && m_pRampSRV)
+        {
+            ctx->PSSetShaderResources(6, 1, &m_pRampSRV);
+        }
 
-			// Toon 쓰면 t6도 다시
-			if (mDbg.useToon && m_pRampSRV) {
-				ctx->PSSetShaderResources(6, 1, &m_pRampSRV);
-			}
-		}
+        // ---------------------------------------------------------------------
+        // 10-D) Sky / Debug / Transparent overlay
+        // ---------------------------------------------------------------------
+        RenderSkyPass(ctx, viewNoTrans);
+        RenderDebugPass(ctx, cb, dirV);
+        RenderTransparentPass(ctx, cb, eye);
+    }
+    else
+    {
+        // ---------------------------------------------------------------------
+        // 10-E) Forward path (기존)
+        // ---------------------------------------------------------------------
+        RenderSkyPass(ctx, viewNoTrans);
+        RenderOpaquePass(ctx, cb, eye);
+        RenderCutoutPass(ctx, cb, eye);
+        RenderDebugPass(ctx, cb, dirV);
+        RenderTransparentPass(ctx, cb, eye);
+    }
 
-		// 3) Sky는 lighting 후에 (네 셰이더는 geometry 없으면 검정 뿌림)
-		RenderSkyPass(ctx, viewNoTrans);
-
-		// 5) Debug
-		RenderDebugPass(ctx, cb, dirV);
-		// 4) Transparent는 마지막에 forward로 얹기
-		RenderTransparentPass(ctx, cb, eye);
-
-	}
-	else
-	{
-		// Forward 경로 (기존)
-		RenderSkyPass(ctx, viewNoTrans);
-		RenderOpaquePass(ctx, cb, eye);
-		RenderCutoutPass(ctx, cb, eye);
-		RenderDebugPass(ctx, cb, dirV);
-		RenderTransparentPass(ctx, cb, eye);
-	}
-
-	// ToneMap
-	if (mTone.useSceneHDR && mSceneHDRSRV.Get())
-		RenderToneMapPass(ctx);
+    // =========================================================================
+    // 11) ToneMap (SceneHDR -> BackBuffer)
+    // =========================================================================
+    if (mTone.useSceneHDR && mSceneHDRSRV.Get())
+        RenderToneMapPass(ctx);
 
 #ifdef _DEBUG
-	// ImGui는 무조건 백버퍼에 그리자 (톤맵 위에 UI 오버레이)
-	ID3D11RenderTargetView* bb = m_pRenderTargetView;
-	ctx->OMSetRenderTargets(1, &bb, nullptr);
-	UpdateImGUI();
+    // =========================================================================
+    // 12) ImGui overlay (항상 백버퍼 위)
+    // =========================================================================
+    {
+        ID3D11RenderTargetView* bb = m_pRenderTargetView;
+        ctx->OMSetRenderTargets(1, &bb, nullptr);
+        UpdateImGUI();
+    }
 #endif
 
-	m_pSwapChain->Present(1, 0);
-
+    // =========================================================================
+    // 13) Present
+    // =========================================================================
+    m_pSwapChain->Present(1, 0);
 }
 
 #ifdef _DEBUG
@@ -360,8 +439,8 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM,
 LRESULT CALLBACK TutorialApp::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 #ifdef _DEBUG
-	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
-		return true;
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+        return true;
 #endif
-	return __super::WndProc(hWnd, message, wParam, lParam);
+    return __super::WndProc(hWnd, message, wParam, lParam);
 }
