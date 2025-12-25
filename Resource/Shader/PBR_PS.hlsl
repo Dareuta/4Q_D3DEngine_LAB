@@ -5,9 +5,16 @@
 #endif
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+static const float PI = 3.14159265f;
+
+// ============================================================================
 // PBR Params (PS b8)
 // - 토글/강제값/IBL 정보 전달용
 // ============================================================================
+
 cbuffer PBRParams : register(b8)
 {
     uint pUseBaseColorTex;
@@ -15,23 +22,18 @@ cbuffer PBRParams : register(b8)
     uint pUseMetallicTex;
     uint pUseRoughnessTex;
 
-    float4 pBaseColor; // rgb: baseColor override
+    float4 pBaseColor;
     float4 pParams; // x=metallic, y=roughness, z=normalStrength, w=flipNormalY(0/1)
 
-    float4 pEnvDiff; //  rgb=color, w=intensity
-    float4 pEnvSpec; //  rgb=color, w=intensity
-
+    float4 pEnvDiff; // rgb=color, w=intensity
+    float4 pEnvSpec; // rgb=color, w=intensity
     float4 pEnvInfo; // x=prefilterMaxMip
 }
 
 // ============================================================================
-// PBR BRDF Helpers (GGX / Schlick / Smith)
+// BRDF Helpers (GGX / Schlick / Smith)
 // ============================================================================
-static const float PI = 3.14159265f;
 
-// GGX / Trowbridge-Reitz NDF
-// a = alpha (일반적으로 alpha = roughness^2)
-// D = a^2 / (pi * ((N.H)^2*(a^2-1)+1)^2)
 float D_GGX(float NdotH, float a)
 {
     float a2 = a * a;
@@ -39,13 +41,11 @@ float D_GGX(float NdotH, float a)
     return a2 / (PI * d * d + 1e-7f);
 }
 
-// Schlick-GGX geometry term (single direction)
 float G_SchlickGGX(float NdotX, float k)
 {
     return NdotX / (NdotX * (1.0f - k) + k + 1e-7f);
 }
 
-// Smith geometry term using UE4-style k mapping
 float G_Smith(float NdotV, float NdotL, float roughness)
 {
     float r = roughness + 1.0f;
@@ -53,14 +53,12 @@ float G_Smith(float NdotV, float NdotL, float roughness)
     return G_SchlickGGX(NdotV, k) * G_SchlickGGX(NdotL, k);
 }
 
-// Fresnel (Schlick)
 float3 F_Schlick(float3 F0, float VdotH)
 {
     float f = pow(1.0f - VdotH, 5.0f);
     return F0 + (1.0f - F0) * f;
 }
 
-// Fresnel Schlick with roughness compensation (IBL에서 자주 쓰는 형태)
 float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
 {
     return F0
@@ -69,12 +67,13 @@ float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
 }
 
 // ============================================================================
-// Main PS
+// PS
 // ============================================================================
+
 float4 main(PS_INPUT input) : SV_Target
 {
     // ------------------------------------------------------------------------
-    // Alpha / Cutout / Transparent 정책 (기존 규칙 유지)
+    // Opacity / Cutout
     // ------------------------------------------------------------------------
     float a = 1.0f;
 
@@ -82,7 +81,6 @@ float4 main(PS_INPUT input) : SV_Target
     {
         a = txOpacity.Sample(samLinear, input.Tex).a;
 
-        // alphaCut >= 0 : 컷아웃(통과 픽셀은 불투명 취급)
         if (alphaCut >= 0.0f)
         {
             clip(a - alphaCut);
@@ -90,20 +88,18 @@ float4 main(PS_INPUT input) : SV_Target
         }
         else
         {
-            // 투명 패스: a 그대로 사용, 거의 0이면 컷
             if (a <= 1e-3f)
                 clip(-1);
         }
     }
 
     // ------------------------------------------------------------------------
-    // World-space basis (Normal/Tangent) + Normal Map 적용
+    // World Basis (N/T/B) + Normal Map
     // ------------------------------------------------------------------------
     float3 Nw_base = normalize(input.NormalW);
 
-    // 디퍼드 GBuffer VS와 동일하게: T 정규화 + B = cross(N,T)*handedness
     float3 T = normalize(input.TangentW.xyz);
-    T = normalize(T - Nw_base * dot(T, Nw_base)); // Orthonormalize
+    T = normalize(T - Nw_base * dot(T, Nw_base));
     float3 B = normalize(cross(Nw_base, T) * input.TangentW.w);
 
     float normalStrength = clamp(pParams.z, 0.0f, 2.0f);
@@ -112,18 +108,18 @@ float4 main(PS_INPUT input) : SV_Target
     if (pUseNormalTex != 0 && useNormal != 0)
     {
         float3 nts = txNormal.Sample(samLinear, input.Tex).xyz * 2.0f - 1.0f;
+
         if (pParams.w > 0.5f)
-            nts.y = -nts.y; // flip green 옵션
+            nts.y = -nts.y;
 
         nts.xy *= normalStrength;
         nts = normalize(nts);
 
-    // tangent-space -> world (row-combo 방식)
         Nw = normalize(nts.x * T + nts.y * B + nts.z * Nw_base);
     }
 
     // ------------------------------------------------------------------------
-    // Lighting vectors (World-space)
+    // Lighting Vectors
     // ------------------------------------------------------------------------
     float3 L = normalize(-vLightDir.xyz);
     float3 V = normalize(EyePosW.xyz - input.WorldPos);
@@ -155,7 +151,7 @@ float4 main(PS_INPUT input) : SV_Target
     }
 
     // ------------------------------------------------------------------------
-    // Metallic / Roughness (텍스처 채널 정책 유지)
+    // Metallic / Roughness (채널 정책 유지)
     // ------------------------------------------------------------------------
     float metallic = pParams.x;
     float roughness = pParams.y;
@@ -167,14 +163,14 @@ float4 main(PS_INPUT input) : SV_Target
         roughness = txEmissive.Sample(samLinear, input.Tex).r;
 
     metallic = saturate(metallic);
-    roughness = clamp(roughness, 0.04f, 1.0f); // 0에 너무 붙으면 스파이크 심해짐
+    roughness = clamp(roughness, 0.04f, 1.0f);
 
     // ------------------------------------------------------------------------
     // Direct Lighting (Cook-Torrance)
     // ------------------------------------------------------------------------
     float3 F0 = lerp(float3(0.04f, 0.04f, 0.04f), baseColor, metallic);
 
-    float aRough = roughness * roughness; // alpha
+    float aRough = roughness * roughness;
     float D = D_GGX(NdotH, aRough);
     float G = G_Smith(NdotV, NdotL, roughness);
     float3 F = F_Schlick(F0, VdotH);
@@ -189,26 +185,22 @@ float4 main(PS_INPUT input) : SV_Target
     float3 direct = (diff + spec) * vLightColor.rgb * NdotL * shadow;
 
     // ------------------------------------------------------------------------
-    // IBL (Image Based Lighting) : diffuse irradiance + spec prefilter + BRDF LUT
+    // IBL (Diffuse Irradiance + Specular Prefilter + BRDF LUT)
     // ------------------------------------------------------------------------
-    float ao = 1.0f; // AO 텍스처 붙이면 여기만 교체
-    
+    float ao = 1.0f;
+
     float3 R = reflect(-V, Nw);
 
     float3 envDiff = pEnvDiff.rgb * pEnvDiff.w;
     float3 envSpec = pEnvSpec.rgb * pEnvSpec.w;
-    
-    // Diffuse IBL (irradiance cube)
+
     float3 irradiance = txIrr.Sample(samClampLinear, Nw).rgb * envDiff;
-        
-    // Specular IBL (prefiltered cube, mip = roughness 기반)
+
     float maxMip = max(pEnvInfo.x, 0.0f);
     float3 prefiltered = txPref.SampleLevel(samClampLinear, R, roughness * maxMip).rgb * envSpec;
 
-    // BRDF LUT (2D)
     float2 brdf = txBRDF.Sample(samClampLinear, float2(NdotV, roughness)).rg;
 
-    // Split-sum approximation
     float3 F_ibl = FresnelSchlickRoughness(NdotV, F0, roughness);
     float3 kD_amb = (1.0f - F_ibl) * (1.0f - metallic);
 
@@ -223,7 +215,6 @@ float4 main(PS_INPUT input) : SV_Target
     float3 color = ambient + direct;
 
 #if SWAPCHAIN_SRGB
-    // (주의) 여기선 sRGB 변환을 하지 않는 정책(엔진/백버퍼 설정에 의존)
     return float4(color, a);
 #else
     float3 color_srgb = pow(saturate(color), 1.0 / 2.2);

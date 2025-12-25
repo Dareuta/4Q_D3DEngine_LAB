@@ -3,8 +3,16 @@
 // Output: BackBuffer (LDR)
 // CB    : b10
 
+// ============================================================================
+// Resources
+// ============================================================================
+
 Texture2D gSceneHDR : register(t0);
 SamplerState gSamp : register(s0);
+
+// ============================================================================
+// Constant Buffer (b10)
+// ============================================================================
 
 cbuffer ToneMapCB : register(b10)
 {
@@ -13,6 +21,10 @@ cbuffer ToneMapCB : register(b10)
     uint gOperatorId; // 0=None, 1=Reinhard, 2=ACES(Fitted)
     uint gFlags; // bit0: apply gamma
 };
+
+// ============================================================================
+// Fullscreen VS
+// ============================================================================
 
 struct VS_OUT
 {
@@ -24,7 +36,6 @@ VS_OUT VS_Main(uint vid : SV_VertexID)
 {
     VS_OUT o;
 
-    // Fullscreen triangle
     float2 pos[3] =
     {
         float2(-1.0, -1.0),
@@ -43,6 +54,10 @@ VS_OUT VS_Main(uint vid : SV_VertexID)
     o.UV = uv[vid];
     return o;
 }
+
+// ============================================================================
+// Tone Mapping Operators
+// ============================================================================
 
 float3 RRTAndODTFit(float3 v)
 {
@@ -80,26 +95,27 @@ float3 ToneMap(float3 c)
 
     if (gOperatorId == 1)
     {
-        // Reinhard
         c = c / (1.0 + c);
         return c;
     }
-    else if (gOperatorId == 2)
+
+    if (gOperatorId == 2)
     {
-        // ACES fitted
         return ACESFitted(c);
     }
 
-    // None
     return c;
 }
+
+// ============================================================================
+// PS
+// ============================================================================
 
 float4 PS_Main(VS_OUT i) : SV_Target
 {
     float3 c = gSceneHDR.Sample(gSamp, i.UV).rgb;
     c = ToneMap(c);
 
-    // backbuffer가 UNORM이면 보통 gamma 인코딩이 필요함
     if ((gFlags & 1u) != 0u)
     {
         c = pow(max(c, 0.0), 1.0 / max(gGamma, 0.0001));

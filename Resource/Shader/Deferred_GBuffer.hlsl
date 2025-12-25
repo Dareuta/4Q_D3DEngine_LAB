@@ -1,3 +1,6 @@
+// ============================================================================
+// Frame / Camera / Light CBs
+// ============================================================================
 
 cbuffer CB0 : register(b0)
 {
@@ -20,12 +23,16 @@ cbuffer CB1 : register(b1)
     float3 _pad1b;
 };
 
+// ============================================================================
+// Material / Texture Usage Flags
+// ============================================================================
+
 cbuffer UseCB : register(b2)
 {
     uint useDiffuse;
     uint useNormal;
-    uint useSpecular; // (너 프로젝트에선 Metallic)
-    uint useEmissive; // (너 프로젝트에선 Roughness)
+    uint useSpecular;
+    uint useEmissive;
     uint useOpacity;
     float alphaCut;
     float2 _pad2;
@@ -45,21 +52,29 @@ cbuffer PBRParams : register(b8)
     uint pUseMetalTex;
     uint pUseRoughTex;
 
-    float4 pBaseColor; // rgb
-    float4 pParams; // x=metallic, y=roughness, z=normalStrength, w=flipNormalY(0/1)
+    float4 pBaseColor;
+    float4 pParams;
 
-    float4 pEnvDiff; // unused here
-    float4 pEnvSpec; // unused here
-    float4 pEnvInfo; // unused here
+    float4 pEnvDiff;
+    float4 pEnvSpec;
+    float4 pEnvInfo;
 };
+
+// ============================================================================
+// Textures / Samplers
+// ============================================================================
 
 Texture2D tBaseColor : register(t0);
 Texture2D tNormal : register(t1);
-Texture2D tMetallic : register(t2); // (AssimpImporterEX: specular 슬롯을 metallic로)
-Texture2D tRoughness : register(t3); // (AssimpImporterEX: emissive 슬롯을 roughness로)
+Texture2D tMetallic : register(t2);
+Texture2D tRoughness : register(t3);
 Texture2D tOpacity : register(t4);
 
 SamplerState s0 : register(s0);
+
+// ============================================================================
+// VS/PS IO
+// ============================================================================
 
 struct VS_IN
 {
@@ -75,14 +90,27 @@ struct VS_OUT
     float3 WorldPos : TEXCOORD0;
     float3 Nw : TEXCOORD1;
     float3 Tw : TEXCOORD2;
-    float3 Bw : TEXCOORD3; 
+    float3 Bw : TEXCOORD3;
     float2 UV : TEXCOORD4;
-    float TanSign : TEXCOORD5; // 추가
+    float TanSign : TEXCOORD5;
 };
+
+struct PS_OUT
+{
+    float4 G0 : SV_Target0;
+    float4 G1 : SV_Target1;
+    float4 G2 : SV_Target2;
+    float4 G3 : SV_Target3;
+};
+
+// ============================================================================
+// VS
+// ============================================================================
 
 VS_OUT VS_Main(VS_IN i)
 {
     VS_OUT o;
+
     float4 wpos = mul(float4(i.Pos, 1), World);
     o.PosH = mul(mul(wpos, View), Projection);
     o.WorldPos = wpos.xyz;
@@ -93,7 +121,6 @@ VS_OUT VS_Main(VS_IN i)
     float3 Tw = mul(float4(i.Tan.xyz, 0), World).xyz;
     Tw = normalize(Tw);
 
-    // 포워드와 동일: tangent를 normal에 직교화
     Tw = Tw - Nw * dot(Tw, Nw);
     Tw = normalize(Tw);
 
@@ -107,40 +134,41 @@ VS_OUT VS_Main(VS_IN i)
     return o;
 }
 
+// ============================================================================
+// Helpers
+// ============================================================================
+
 float3 DecodeNormalTS(float3 enc)
 {
-    // enc: [0,1] -> [-1,1]
     float3 n = enc * 2.0f - 1.0f;
+
     if (pParams.w > 0.5f)
         n.y = -n.y;
+
     return n;
 }
 
-struct PS_OUT
-{
-    float4 G0 : SV_Target0; // WorldPos (xyz), valid(w)
-    float4 G1 : SV_Target1; // WorldNormal encoded 0..1 (xyz), valid(w)
-    float4 G2 : SV_Target2; // BaseColor (rgb)
-    float4 G3 : SV_Target3; // Metallic (r), Roughness (g)
-};
+// ============================================================================
+// PS (GBuffer Write)
+// ============================================================================
 
 PS_OUT PS_Main(VS_OUT i)
 {
     PS_OUT o;
 
-    // alpha cut (선택)
+    // --- Opacity / Alpha Cut ---
     if (useOpacity == 1u)
     {
         float a = tOpacity.Sample(s0, i.UV).a;
         clip(a - alphaCut);
     }
 
-    // baseColor
+    // --- Base Color ---
     float3 baseColor = (matUseBaseColor != 0) ? matBaseColor.rgb : pBaseColor.rgb;
     if (pUseBaseColorTex != 0u && useDiffuse == 1u)
         baseColor = tBaseColor.Sample(s0, i.UV).rgb;
 
-    // metallic / roughness
+    // --- Metallic / Roughness ---
     float metallic = pParams.x;
     float rough = pParams.y;
 
@@ -153,7 +181,7 @@ PS_OUT PS_Main(VS_OUT i)
     rough = clamp(rough, 0.04f, 1.0f);
     metallic = saturate(metallic);
 
-    // normal
+    // --- Normal (World) ---
     float3 Nw_base = normalize(i.Nw);
     float3 Nw = Nw_base;
 
@@ -164,19 +192,17 @@ PS_OUT PS_Main(VS_OUT i)
         nts = normalize(nts);
 
         float3 T = normalize(i.Tw);
-        T = normalize(T - Nw_base * dot(T, Nw_base)); // ★ 포워드와 동일
+        T = normalize(T - Nw_base * dot(T, Nw_base));
         float3 B = normalize(cross(Nw_base, T) * i.TanSign);
 
-    // 포워드와 동일한 row-combo
         Nw = normalize(nts.x * T + nts.y * B + nts.z * Nw_base);
     }
 
-
-    // outputs
+    // --- Outputs ---
     o.G0 = float4(i.WorldPos, 1.0f);
-    //o.G1 = float4(Nw * 0.5f + 0.5f, 1.0f); // ImGui로 보기 좋게 0..1 인코딩
     o.G1 = float4(Nw, 1.0f);
     o.G2 = float4(baseColor, 1.0f);
     o.G3 = float4(metallic, rough, 0, 1.0f);
+
     return o;
 }
