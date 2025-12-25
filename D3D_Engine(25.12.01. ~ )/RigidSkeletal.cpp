@@ -1,4 +1,10 @@
-﻿// RigidSkeletal.cpp
+﻿// ============================================================================
+// RigidSkeletal.cpp
+// - RigidSkeletal 구현: 노드 트리/애니 샘플링/파트 렌더링
+// ============================================================================
+
+// ---- includes ----
+
 #include "../D3D_Core/pch.h"
 #include "../D3D_Core/Helper.h"
 
@@ -13,7 +19,7 @@
 
 using namespace DirectX;
 using namespace DirectX::SimpleMath;
- 
+
 
 static inline double fmod_pos(double x, double period) {
 	if (period <= 0.0) return 0.0;
@@ -21,7 +27,9 @@ static inline double fmod_pos(double x, double period) {
 	return (r < 0.0) ? r + period : r;
 }
 
-// ===== ai -> DX 변환 =====
+// ============================================================================
+// ai -> DX 변환
+// ============================================================================
 static Matrix ToM(const aiMatrix4x4& A)
 {
 	// Assimp의 aiMatrix4x4는 행우선. SimpleMath::Matrix도 행우선.
@@ -41,7 +49,9 @@ static Vector3 ToV3(const aiVector3D& v)
 	return { v.x, v.y, v.z };
 }
 
-// ===== 키프레임 upper bound =====
+// ============================================================================
+// 키프레임 upper bound
+// ============================================================================
 int RigidSkeletal::UpperBoundT(double t, const std::vector<RS_KeyT>& v)
 {
 	int n = (int)v.size();
@@ -58,7 +68,9 @@ int RigidSkeletal::UpperBoundS(double t, const std::vector<RS_KeyS>& v)
 	int i = 0; while (i < n && v[i].t <= t) ++i; return i;
 }
 
-// ===== 로컬 행렬 샘플링 =====
+// ============================================================================
+// 로컬 행렬 샘플링
+// ============================================================================
 Matrix RigidSkeletal::SampleLocalOf(int nodeIdx, double tTick) const
 {
 	const RS_Node& nd = mNodes[nodeIdx];
@@ -118,7 +130,9 @@ Matrix RigidSkeletal::SampleLocalOf(int nodeIdx, double tTick) const
 	return S * R * T;
 }
 
-// ===== 로딩 =====
+// ============================================================================
+// 로딩
+// ============================================================================
 std::unique_ptr<RigidSkeletal> RigidSkeletal::LoadFromFBX(
 	ID3D11Device* dev,
 	const std::wstring& fbxPath,
@@ -140,7 +154,9 @@ std::unique_ptr<RigidSkeletal> RigidSkeletal::LoadFromFBX(
 	const aiScene* sc = imp.ReadFile(std::string(fbxPath.begin(), fbxPath.end()), flags);
 	if (!sc || !sc->mRootNode) throw std::runtime_error("Assimp load failed");
 
-	// --- 1) 노드 트리 구축 ---
+	// ----------------------------------------------------------------------------
+	// 1) 노드 트리 구축
+	// ----------------------------------------------------------------------------
 	std::vector<RS_Node> nodes;
 	std::unordered_map<std::string, int> nameToIdx;
 
@@ -162,7 +178,9 @@ std::unique_ptr<RigidSkeletal> RigidSkeletal::LoadFromFBX(
 		};
 	int root = buildNode(sc->mRootNode, -1);
 
-	// --- 2) 파트(StaticMesh) 구성: 노드에 붙은 aiMesh를 각자 하나의 파트로 만든다 ---
+	// ----------------------------------------------------------------------------
+	// 2) 파트(StaticMesh) 구성: 노드에 붙은 aiMesh를 각자 하나의 파트로 만든다
+	// ----------------------------------------------------------------------------
 	std::vector<RS_Part> parts;
 
 	std::vector<MaterialCPU> sceneMaterials;
@@ -205,7 +223,6 @@ std::unique_ptr<RigidSkeletal> RigidSkeletal::LoadFromFBX(
 				const aiVector3D& t = am->mTangents[v];
 				const aiVector3D& b = am->mBitangents[v];
 
-				
 
 				Vector3 T(am->mTangents[v].x, am->mTangents[v].y, am->mTangents[v].z);
 				Vector3 B(am->mBitangents[v].x, am->mBitangents[v].y, am->mBitangents[v].z);
@@ -272,7 +289,9 @@ std::unique_ptr<RigidSkeletal> RigidSkeletal::LoadFromFBX(
 		};
 	collectMeshes(sc->mRootNode);
 
-	// --- 3) 애니메이션(첫 개) 파싱 ---
+	// ----------------------------------------------------------------------------
+	// 3) 애니메이션(첫 개) 파싱
+	// ----------------------------------------------------------------------------
 	RS_Clip clip;
 	if (sc->mNumAnimations > 0) {
 		const aiAnimation* a = sc->mAnimations[0];
@@ -307,7 +326,9 @@ std::unique_ptr<RigidSkeletal> RigidSkeletal::LoadFromFBX(
 	return up;
 }
 
-// ===== 포즈 평가 =====
+// ============================================================================
+// 포즈 평가
+// ============================================================================
 void RigidSkeletal::EvaluatePose(double tSec, bool loop)
 {
 	if (mClip.duration <= 0.0) {
@@ -336,7 +357,6 @@ void RigidSkeletal::EvaluatePose(double tSec, bool loop)
 void RigidSkeletal::EvaluatePose(double tSec) {
 	EvaluatePose(tSec, /*loop*/true);
 }
-
 
 
 static void FillCB(ConstantBuffer& cb,
@@ -369,7 +389,9 @@ static void PushUseCB(ID3D11DeviceContext* ctx, ID3D11Buffer* useCB,
 	ctx->PSSetConstantBuffers(2, 1, &useCB);
 }
 
-// === Opaque / Cutout / Transparent ===
+// ============================================================================
+// Opaque / Cutout / Transparent
+// ============================================================================
 void RigidSkeletal::DrawOpaqueOnly(
 	ID3D11DeviceContext* ctx,
 	const Matrix& worldModel,
@@ -527,4 +549,3 @@ void RigidSkeletal::DrawDepthOnly(
 		MaterialGPU::Unbind(ctx);
 	}
 }
-

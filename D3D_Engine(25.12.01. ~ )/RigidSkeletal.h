@@ -1,4 +1,10 @@
-﻿// RigidSkeletal.h
+﻿// ============================================================================
+// RigidSkeletal.h
+// - RigidSkeletal 선언
+// ============================================================================
+
+// ---- includes ----
+
 #pragma once
 #include <string>
 #include <vector>
@@ -67,7 +73,7 @@ public:
 
     // 시간 업데이트(tSec = 초). 첫 애니메이션(보통 Walk)을 사용
     void EvaluatePose(double tSec);
-    void EvaluatePose(double tSec, bool loop);      // 
+    void EvaluatePose(double tSec, bool loop);      //
 
     // Opaque / Cutout / Transparent 렌더(기존 파이프라인에 그대로 맞춤)
     void DrawOpaqueOnly(
@@ -123,7 +129,9 @@ public:
 
 
 public:
-    // --- IMGUI/타이밍용 간단 Getter ---
+    // ----------------------------------------------------------------------------
+    // IMGUI/타이밍용 간단 Getter
+    // ----------------------------------------------------------------------------
     double GetClipDurationTicks() const noexcept { return mClip.duration; }
     double GetTicksPerSecond()   const noexcept { return (mClip.ticksPerSec > 0.0) ? mClip.ticksPerSec : 25.0; }
     double GetClipDurationSec()  const noexcept { return GetClipDurationTicks() / GetTicksPerSecond(); }

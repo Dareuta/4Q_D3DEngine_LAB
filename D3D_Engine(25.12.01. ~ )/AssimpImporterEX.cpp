@@ -1,4 +1,11 @@
-﻿// AssimpImporterEx.cpp
+﻿// ============================================================================
+// AssimpImporterEX.cpp
+// - FBX(Assimp) 로더: PNTT 메쉬/머티리얼 추출
+// ============================================================================
+
+// ---- includes ----
+
+// AssimpImporterEx.cpp
 #include "../D3D_Core/pch.h"
 #include "AssimpImporterEx.h"
 
@@ -12,9 +19,9 @@ using std::filesystem::path;
 
 namespace
 {
-	// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 	// Import flags
-	// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 	unsigned MakeFlags(bool flipUV, bool leftHanded)
 	{
 		unsigned f =
@@ -33,9 +40,9 @@ namespace
 		return f;
 	}
 
-	// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 	// Small helpers
-	// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 	std::wstring Widen(const aiString& s)
 	{
 		const std::string a = s.C_Str();
@@ -144,9 +151,9 @@ namespace
 	}
 } // namespace
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // Load FBX: Mesh(PNTT) + Materials
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 bool AssimpImporterEx::LoadFBX_PNTT_AndMaterials(
 	const std::wstring& pathW, MeshData_PNTT& out, bool flipUV, bool leftHanded)
 {
@@ -159,18 +166,18 @@ bool AssimpImporterEx::LoadFBX_PNTT_AndMaterials(
 	const aiScene* sc = imp.ReadFile(pathA.c_str(), MakeFlags(flipUV, leftHanded));
 	if (!sc || !sc->mRootNode) return false;
 
-	// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 	// 1) Materials
-	// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 	out.materials.clear();
 	out.materials.resize(sc->mNumMaterials);
 
 	for (unsigned i = 0; i < sc->mNumMaterials; ++i)
 		out.materials[i] = ExtractOneMaterial(sc->mMaterials[i]);
 
-	// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 	// 2) Mesh aggregation (all aiMesh into one big vertex/index buffer + submeshes)
-	// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 	size_t totalV = 0, totalI = 0;
 	for (unsigned mi = 0; mi < sc->mNumMeshes; ++mi) {
 		const aiMesh* m = sc->mMeshes[mi];
@@ -248,9 +255,9 @@ bool AssimpImporterEx::LoadFBX_PNTT_AndMaterials(
 	return true;
 }
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // Convert a single aiMesh -> MeshData_PNTT (one submesh)
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 void AssimpImporterEx::ConvertAiMeshToPNTT(const aiMesh* am, MeshData_PNTT& out)
 {
 	out.vertices.clear();
@@ -326,9 +333,9 @@ void AssimpImporterEx::ConvertAiMeshToPNTT(const aiMesh* am, MeshData_PNTT& out)
 	out.submeshes.push_back(sm);
 }
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // Extract all materials from a scene (same policy as LoadFBX_PNTT_AndMaterials)
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 void AssimpImporterEx::ExtractMaterials(const aiScene* sc, std::vector<MaterialCPU>& out)
 {
 	out.clear();

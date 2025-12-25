@@ -1,4 +1,10 @@
-﻿// SkinnedSkeletal.cpp
+﻿// ============================================================================
+// SkinnedSkeletal.cpp
+// - SkinnedSkeletal 구현: 본 팔레트 업데이트/스키닝 애니/드로우
+// ============================================================================
+
+// ---- includes ----
+
 #include "../D3D_Core/pch.h"
 #include "../D3D_Core/Helper.h"
 
@@ -9,7 +15,6 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-
 
 
 static inline double fmod_pos(double x, double m) {
@@ -43,7 +48,9 @@ static unsigned MakeFlags(bool flipUV, bool leftHanded)
 	return f;
 }
 
-// ===== 키프레임 upper bound =====
+// ============================================================================
+// 키프레임 upper bound
+// ============================================================================
 int SkinnedSkeletal::UB_T(double t, const std::vector<SK_KeyT>& v)
 {
 	int n = (int)v.size();
@@ -60,7 +67,9 @@ int SkinnedSkeletal::UB_S(double t, const std::vector<SK_KeyS>& v)
 	int i = 0; while (i < n && v[i].t <= t) ++i; return i;
 }
 
-// ===== 로컬 행렬 샘플링 =====
+// ============================================================================
+// 로컬 행렬 샘플링
+// ============================================================================
 Matrix SkinnedSkeletal::SampleLocalOf(int nodeIdx, double tTick) const
 {
 	const SK_Node& nd = mNodes[nodeIdx];
@@ -115,7 +124,9 @@ Matrix SkinnedSkeletal::SampleLocalOf(int nodeIdx, double tTick) const
 	return S * R * T;
 }
 
-// ===== 로드 =====
+// ============================================================================
+// 로드
+// ============================================================================
 std::unique_ptr<SkinnedSkeletal> SkinnedSkeletal::LoadFromFBX(
 	ID3D11Device* dev,
 	const std::wstring& fbxPath,
@@ -127,10 +138,12 @@ std::unique_ptr<SkinnedSkeletal> SkinnedSkeletal::LoadFromFBX(
 	unsigned flags = MakeFlags(/*flipUV*/true, /*leftHanded*/true);
 	const aiScene* sc = imp.ReadFile(std::string(fbxPath.begin(), fbxPath.end()), flags);
 	if (!sc || !sc->mRootNode) throw std::runtime_error("Assimp load failed");
-	
+
 	up->mGlobalInv = ToM(sc->mRootNode->mTransformation).Invert();
 
-	// --- 1) 노드 트리 ---
+	// ----------------------------------------------------------------------------
+	// 1) 노드 트리
+	// ----------------------------------------------------------------------------
 	std::vector<SK_Node> nodes;
 	std::unordered_map<std::string, int> nameToIdx;
 
@@ -151,11 +164,15 @@ std::unique_ptr<SkinnedSkeletal> SkinnedSkeletal::LoadFromFBX(
 		};
 	int root = buildNode(sc->mRootNode, -1);
 
-	// --- 2) 재질 ---
+	// ----------------------------------------------------------------------------
+	// 2) 재질
+	// ----------------------------------------------------------------------------
 	std::vector<MaterialCPU> sceneMaterials;
 	AssimpImporterEx::ExtractMaterials(sc, sceneMaterials);
 
-	// --- 3) 파트 & 본/가중치 빌드 ---
+	// ----------------------------------------------------------------------------
+	// 3) 파트 & 본/가중치 빌드
+	// ----------------------------------------------------------------------------
 	std::vector<SK_Part> parts;
 	parts.reserve(sc->mNumMeshes);
 
@@ -202,7 +219,7 @@ std::unique_ptr<SkinnedSkeletal> SkinnedSkeletal::LoadFromFBX(
 			if (am->mTangents && am->mBitangents) {
 				Vector3 T(am->mTangents[v].x, am->mTangents[v].y, am->mTangents[v].z);
 				Vector3 B(am->mBitangents[v].x, am->mBitangents[v].y, am->mBitangents[v].z);
-				Vector3 N(vv.nx, vv.ny, vv.nz);			
+				Vector3 N(vv.nx, vv.ny, vv.nz);
 
 				float sign = (N.Cross(T).Dot(B) < 0.0f) ? -1.0f : 1.0f;
 				vv.tx = T.x; vv.ty = T.y; vv.tz = T.z; vv.tw = sign;
@@ -283,7 +300,9 @@ std::unique_ptr<SkinnedSkeletal> SkinnedSkeletal::LoadFromFBX(
 		};
 	collectMeshes(sc->mRootNode);
 
-	// --- 4) 애니메이션(첫 개) ---
+	// ----------------------------------------------------------------------------
+	// 4) 애니메이션(첫 개)
+	// ----------------------------------------------------------------------------
 	SK_Clip clip;
 	if (sc->mNumAnimations > 0) {
 		const aiAnimation* a = sc->mAnimations[0];
@@ -319,7 +338,9 @@ std::unique_ptr<SkinnedSkeletal> SkinnedSkeletal::LoadFromFBX(
 	return up;
 }
 
-// ===== 포즈 평가 =====
+// ============================================================================
+// 포즈 평가
+// ============================================================================
 void SkinnedSkeletal::EvaluatePose(double tSec) {
 	EvaluatePose(tSec, /*loop*/true);
 }
@@ -350,7 +371,9 @@ void SkinnedSkeletal::EvaluatePose(double tSec, bool loop)
 	}
 }
 
-// ===== 본 팔레트 업데이트 =====
+// ============================================================================
+// 본 팔레트 업데이트
+// ============================================================================
 void SkinnedSkeletal::UpdateBonePalette(
 	ID3D11DeviceContext* ctx,
 	ID3D11Buffer* boneCB,
@@ -421,7 +444,9 @@ static void PushUseCB(ID3D11DeviceContext* ctx, ID3D11Buffer* useCB,
 	ctx->PSSetConstantBuffers(2, 1, &useCB);
 }
 
-// ===== Draw Opaque / Cutout / Transparent =====
+// ============================================================================
+// Draw Opaque / Cutout / Transparent
+// ============================================================================
 void SkinnedSkeletal::DrawOpaqueOnly(
 	ID3D11DeviceContext* ctx,
 	const Matrix& worldModel, const Matrix& view, const Matrix& proj,
