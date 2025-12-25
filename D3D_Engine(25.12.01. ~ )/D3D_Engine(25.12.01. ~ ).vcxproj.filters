@@ -87,60 +87,60 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\Resource\Shader\DbgGrid.hlsl">
+    <FxCompile Include="..\Shader\DbgGrid.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\DebugColor_PS.hlsl">
+    <FxCompile Include="..\Shader\DebugColor_PS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\DebugColor_VS.hlsl">
+    <FxCompile Include="..\Shader\DebugColor_VS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\Deferred_GBuffer.hlsl">
+    <FxCompile Include="..\Shader\Deferred_GBuffer.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\Deferred_Light.hlsl">
+    <FxCompile Include="..\Shader\Deferred_Light.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\DepthOnly_PS.hlsl">
+    <FxCompile Include="..\Shader\DepthOnly_PS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\DepthOnly_SkinnedVS.hlsl">
+    <FxCompile Include="..\Shader\DepthOnly_SkinnedVS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\DepthOnly_VS.hlsl">
+    <FxCompile Include="..\Shader\DepthOnly_VS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\GBufferDebug.hlsl">
+    <FxCompile Include="..\Shader\GBufferDebug.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\PBR_PS.hlsl">
+    <FxCompile Include="..\Shader\PBR_PS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\PixelShader.hlsl">
+    <FxCompile Include="..\Shader\PixelShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\Sky_PS.hlsl">
+    <FxCompile Include="..\Shader\PointShadow_PS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\Sky_VS.hlsl">
+    <FxCompile Include="..\Shader\Sky_PS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\ToneMap.hlsl">
+    <FxCompile Include="..\Shader\Sky_VS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\VertexShader.hlsl">
+    <FxCompile Include="..\Shader\ToneMap.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\VertexShaderSkinning.hlsl">
+    <FxCompile Include="..\Shader\VertexShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="..\Resource\Shader\PointShadow_PS.hlsl">
+    <FxCompile Include="..\Shader\VertexShaderSkinning.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\Resource\Shader\Shared.hlsli">
+    <None Include="..\Shader\Shared.hlsli">
       <Filter>Shader</Filter>
     </None>
   </ItemGroup>

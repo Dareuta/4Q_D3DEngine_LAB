@@ -23,7 +23,7 @@ float main(PS_IN IN) : SV_Target0
     // alpha cut (나뭇잎 같은 cutout)
     if (useOpacity != 0)
     {
-        float a = txOpacity.Sample(samLinear, IN.Tex).r;
+        float a = txOpacity.Sample(samLinear, IN.Tex).a;
         clip(a - alphaCut);
     }
 

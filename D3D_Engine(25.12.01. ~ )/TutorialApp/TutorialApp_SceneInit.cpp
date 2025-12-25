@@ -190,7 +190,7 @@ bool TutorialApp::InitScene()
 	{
 		ComPtr<ID3DBlob> vsb, psb;
 
-		Compile(L"../Resource/Shader/VertexShader.hlsl", "main", "vs_5_0", vsb);
+		Compile(L"../Shader/VertexShader.hlsl", "main", "vs_5_0", vsb);
 		CreateVS(vsb, &m_pMeshVS);
 
 		const D3D11_INPUT_ELEMENT_DESC IL_PNTT[] =
@@ -202,7 +202,7 @@ bool TutorialApp::InitScene()
 		};
 		CreateIL(IL_PNTT, _countof(IL_PNTT), vsb, &m_pMeshIL);
 
-		Compile(L"../Resource/Shader/PixelShader.hlsl", "main", "ps_5_0", psb);
+		Compile(L"../Shader/PixelShader.hlsl", "main", "ps_5_0", psb);
 		CreatePS(psb, &m_pMeshPS);
 	}
 
@@ -212,7 +212,7 @@ bool TutorialApp::InitScene()
 	{
 		ComPtr<ID3DBlob> vsb, psb;
 
-		Compile(L"../Resource/Shader/DebugColor_VS.hlsl", "main", "vs_5_0", vsb);
+		Compile(L"../Shader/DebugColor_VS.hlsl", "main", "vs_5_0", vsb);
 		CreateVS(vsb, &m_pDbgVS);
 
 		const D3D11_INPUT_ELEMENT_DESC IL_DBG[] =
@@ -222,7 +222,7 @@ bool TutorialApp::InitScene()
 		};
 		CreateIL(IL_DBG, _countof(IL_DBG), vsb, &m_pDbgIL);
 
-		Compile(L"../Resource/Shader/DebugColor_PS.hlsl", "main", "ps_5_0", psb);
+		Compile(L"../Shader/DebugColor_PS.hlsl", "main", "ps_5_0", psb);
 		CreatePS(psb, &m_pDbgPS);
 	}
 
@@ -231,7 +231,7 @@ bool TutorialApp::InitScene()
 	// =========================================================================
 	{
 		ID3DBlob* pbrPS = nullptr;
-		HR_T(CompileShaderFromFile(L"../Resource/Shader/PBR_PS.hlsl", "main", "ps_5_0", &pbrPS));
+		HR_T(CompileShaderFromFile(L"../Shader/PBR_PS.hlsl", "main", "ps_5_0", &pbrPS));
 		HR_T(m_pDevice->CreatePixelShader(pbrPS->GetBufferPointer(), pbrPS->GetBufferSize(), nullptr, &m_pPBRPS));
 		SAFE_RELEASE(pbrPS);
 
@@ -248,8 +248,8 @@ bool TutorialApp::InitScene()
 	{
 		ComPtr<ID3DBlob> vsb, psb;
 
-		Compile(L"../Resource/Shader/ToneMap.hlsl", "VS_Main", "vs_5_0", vsb);
-		Compile(L"../Resource/Shader/ToneMap.hlsl", "PS_Main", "ps_5_0", psb);
+		Compile(L"../Shader/ToneMap.hlsl", "VS_Main", "vs_5_0", vsb);
+		Compile(L"../Shader/ToneMap.hlsl", "PS_Main", "ps_5_0", psb);
 
 		HR_T(m_pDevice->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, mVS_ToneMap.GetAddressOf()));
 		HR_T(m_pDevice->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, mPS_ToneMap.GetAddressOf()));
@@ -275,27 +275,27 @@ bool TutorialApp::InitScene()
 	{
 		ComPtr<ID3DBlob> vsb, psb;
 
-		Compile(L"../Resource/Shader/Deferred_GBuffer.hlsl", "VS_Main", "vs_5_0", vsb);
+		Compile(L"../Shader/Deferred_GBuffer.hlsl", "VS_Main", "vs_5_0", vsb);
 		HR_T(m_pDevice->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, mVS_GBuffer.GetAddressOf()));
 
-		Compile(L"../Resource/Shader/Deferred_GBuffer.hlsl", "PS_Main", "ps_5_0", psb);
+		Compile(L"../Shader/Deferred_GBuffer.hlsl", "PS_Main", "ps_5_0", psb);
 		HR_T(m_pDevice->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, mPS_GBuffer.GetAddressOf()));
 	}
 
 	{
 		ComPtr<ID3DBlob> vsb, psb;
 
-		Compile(L"../Resource/Shader/Deferred_Light.hlsl", "VS_Main", "vs_5_0", vsb);
+		Compile(L"../Shader/Deferred_Light.hlsl", "VS_Main", "vs_5_0", vsb);
 		HR_T(m_pDevice->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, mVS_DeferredLight.GetAddressOf()));
 
-		Compile(L"../Resource/Shader/Deferred_Light.hlsl", "PS_Main", "ps_5_0", psb);
+		Compile(L"../Shader/Deferred_Light.hlsl", "PS_Main", "ps_5_0", psb);
 		HR_T(m_pDevice->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, mPS_DeferredLight.GetAddressOf()));
 	}
 
 	{
 		ComPtr<ID3DBlob> psb;
 
-		Compile(L"../Resource/Shader/GBufferDebug.hlsl", "PS_Main", "ps_5_0", psb);
+		Compile(L"../Shader/GBufferDebug.hlsl", "PS_Main", "ps_5_0", psb);
 		HR_T(m_pDevice->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, mPS_GBufferDebug.GetAddressOf()));
 
 		D3D11_BUFFER_DESC bd{};
@@ -313,7 +313,7 @@ bool TutorialApp::InitScene()
 
 		ComPtr<ID3DBlob> vsb;
 		HR_T(D3DCompileFromFile(
-			L"../Resource/Shader/VertexShaderSkinning.hlsl",
+			L"../Shader/VertexShaderSkinning.hlsl",
 			defs, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 			"main", "vs_5_0", 0, 0, &vsb, nullptr));
 
@@ -612,7 +612,7 @@ bool TutorialApp::InitScene()
 		// shaders & IL (position-only)
 		ComPtr<ID3DBlob> vsb, psb;
 
-		Compile(L"../Resource/Shader/Sky_VS.hlsl", "main", "vs_5_0", vsb);
+		Compile(L"../Shader/Sky_VS.hlsl", "main", "vs_5_0", vsb);
 		CreateVS(vsb, &m_pSkyVS);
 
 		const D3D11_INPUT_ELEMENT_DESC IL_SKY[] =
@@ -621,7 +621,7 @@ bool TutorialApp::InitScene()
 		};
 		CreateIL(IL_SKY, _countof(IL_SKY), vsb, &m_pSkyIL);
 
-		Compile(L"../Resource/Shader/Sky_PS.hlsl", "main", "ps_5_0", psb);
+		Compile(L"../Shader/Sky_PS.hlsl", "main", "ps_5_0", psb);
 		CreatePS(psb, &m_pSkyPS);
 
 		// geometry (unit cube)
@@ -716,8 +716,8 @@ bool TutorialApp::InitScene()
 		// shaders & IL
 		ComPtr<ID3DBlob> vsb, psb;
 
-		Compile(L"../Resource/Shader/DbgGrid.hlsl", "VS_Main", "vs_5_0", vsb);
-		Compile(L"../Resource/Shader/DbgGrid.hlsl", "PS_Main", "ps_5_0", psb);
+		Compile(L"../Shader/DbgGrid.hlsl", "VS_Main", "vs_5_0", vsb);
+		Compile(L"../Shader/DbgGrid.hlsl", "PS_Main", "ps_5_0", psb);
 
 		HR_T(m_pDevice->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, &mGridVS));
 		HR_T(m_pDevice->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, &mGridPS));
@@ -1016,10 +1016,10 @@ bool TutorialApp::CreateDepthOnlyShaders(ID3D11Device* dev)
 
 	ComPtr<ID3DBlob> vsPntt, vsSkin, psDepth, psPoint;
 
-	HR_T(CompileShaderFromFile(L"../Resource/Shader/DepthOnly_VS.hlsl", "main", "vs_5_0", vsPntt.GetAddressOf()));
-	HR_T(CompileShaderFromFile(L"../Resource/Shader/DepthOnly_SkinnedVS.hlsl", "main", "vs_5_0", vsSkin.GetAddressOf()));
-	HR_T(CompileShaderFromFile(L"../Resource/Shader/DepthOnly_PS.hlsl", "main", "ps_5_0", psDepth.GetAddressOf()));
-	HR_T(CompileShaderFromFile(L"../Resource/Shader/PointShadow_PS.hlsl", "main", "ps_5_0", psPoint.GetAddressOf()));
+	HR_T(CompileShaderFromFile(L"../Shader/DepthOnly_VS.hlsl", "main", "vs_5_0", vsPntt.GetAddressOf()));
+	HR_T(CompileShaderFromFile(L"../Shader/DepthOnly_SkinnedVS.hlsl", "main", "vs_5_0", vsSkin.GetAddressOf()));
+	HR_T(CompileShaderFromFile(L"../Shader/DepthOnly_PS.hlsl", "main", "ps_5_0", psDepth.GetAddressOf()));
+	HR_T(CompileShaderFromFile(L"../Shader/PointShadow_PS.hlsl", "main", "ps_5_0", psPoint.GetAddressOf()));
 
 	HR_T(dev->CreateVertexShader(vsPntt->GetBufferPointer(), vsPntt->GetBufferSize(), nullptr, mVS_Depth.GetAddressOf()));
 	HR_T(dev->CreateVertexShader(vsSkin->GetBufferPointer(), vsSkin->GetBufferSize(), nullptr, mVS_DepthSkinned.GetAddressOf()));
