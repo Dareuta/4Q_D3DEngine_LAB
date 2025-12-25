@@ -117,6 +117,8 @@ void TutorialApp::UpdateImGUI()
 
 	static decltype(mPbr)  s_initPbr{};
 	static decltype(mTone) s_initTone{};
+	static decltype(mPoint) s_initPoint{};
+
 
 	if (!s_inited)
 	{
@@ -148,6 +150,7 @@ void TutorialApp::UpdateImGUI()
 
 		s_initPbr = mPbr;
 		s_initTone = mTone;
+		s_initPoint = mPoint;
 	}
 
 	// ------------------------------------------------------------------------
@@ -489,8 +492,8 @@ void TutorialApp::UpdateImGUI()
 	// ========================================================================
 	if (mDbg.showLightWindow)
 	{
-		ImGui::SetNextWindowSize(ImVec2(700, 200), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowPos(ImVec2(610, 880), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(700, 475), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(610, 607), ImGuiCond_FirstUseEver);
 
 		if (ImGui::Begin(u8"조명(Light)", &mDbg.showLightWindow))
 		{
@@ -536,7 +539,7 @@ void TutorialApp::UpdateImGUI()
 				DirToYawPitch(dirUI, m_LightYaw, m_LightPitch);
 			}
 
-			if (ImGui::CollapsingHeader(u8"Yaw/Pitch (보조 컨트롤)"))
+			if (ImGui::CollapsingHeader(u8"Yaw/Pitch/Intensity (보조 컨트롤)"))
 			{
 				ImGui::SliderAngle(u8"Yaw", &m_LightYaw, -180.0f, 180.0f);
 				ImGui::SliderAngle(u8"Pitch", &m_LightPitch, -89.0f, 89.0f);
@@ -568,11 +571,16 @@ void TutorialApp::UpdateImGUI()
 			ImGui::Checkbox("Show Marker##pt", &mPoint.showMarker);
 			ImGui::DragFloat("Marker Size##pt", &mPoint.markerSize, 0.5f, 1.0f, 500.0f, "%.1f");
 
+			if (ImGui::Button(u8"포인트라이트 초기화(Reset)##pt"))
+			{
+				mPoint = s_initPoint;
+			}
+
 			ImGui::SeparatorText("Point Shadow (Cube)");
 
 			ImGui::Checkbox("Enable##ptshadow", &mPoint.shadowEnable);
 			ImGui::DragFloat("Bias##ptshadow", &mPoint.shadowBias, 0.0005f, 0.0f, 0.05f, "%.5f");
-			ImGui::TextDisabled(u8"MapSize=%u (변경하려면 재시작/리소스 재생성 필요)", (unsigned)mPoint.shadowMapSize);
+			ImGui::TextDisabled(u8"MapSize=%u", (unsigned)mPoint.shadowMapSize);
 		}
 
 		ImGui::End();
@@ -583,7 +591,7 @@ void TutorialApp::UpdateImGUI()
 	// ========================================================================
 	if (mDbg.showShadowWindow)
 	{
-		ImGui::SetNextWindowSize(ImVec2(300, 440), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(300, 443), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowPos(ImVec2(370, 0), ImGuiCond_FirstUseEver);
 
 		if (ImGui::Begin(u8"그림자(Shadow)", &mDbg.showShadowWindow))
@@ -654,7 +662,7 @@ void TutorialApp::UpdateImGUI()
 	// ========================================================================
 	if (mDbg.showGBuffer)
 	{
-		ImGui::SetNextWindowSize(ImVec2(500, 640), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(500, 481), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowPos(ImVec2(1420, 0), ImGuiCond_FirstUseEver);
 
 		if (ImGui::Begin(u8"G-Buffer", &mDbg.showGBuffer))
