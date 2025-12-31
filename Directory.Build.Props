@@ -1,74 +1,103 @@
 ﻿<Project>
-  <!-- ==== 경로/트리플릿 공통 설정 ==== -->
-  <PropertyGroup>
-    <!-- vcpkg 루트 경로: 필요시 본인 경로로 수정 -->
-	  <!-- C:\Users\A\Documents\GitHub\vcpkg -->
-	  <!-- C:\Users\User\Documents\GitHub\vcpkg -->
-    <VcpkgRoot>C:\Users\A\Documents\GitHub\vcpkg</VcpkgRoot>
-    
-    <TripletStatic>x64-windows-static-md</TripletStatic>
-    <TripletDynamic>x64-windows</TripletDynamic>
-  </PropertyGroup>
+	<!-- ==== 경로/트리플릿 공통 설정 ==== -->
+	<PropertyGroup>
+		<!-- vcpkg 루트 경로: 필요시 본인 경로로 수정 -->
+		<!-- C:\Users\A\Documents\GitHub\vcpkg -->
+		<!-- C:\Users\User\Documents\GitHub\vcpkg -->
+		<VcpkgRoot>C:\Users\A\Documents\GitHub\vcpkg</VcpkgRoot>
 
-  <!-- ==== 공통: 포함 디렉터리 ==== -->
-  <ItemDefinitionGroup>
-    <ClCompile>
-      <AdditionalIncludeDirectories>
-        $(VcpkgRoot)\installed\$(TripletStatic)\include;
-        $(VcpkgRoot)\installed\$(TripletDynamic)\include;
-        %(AdditionalIncludeDirectories)
-      </AdditionalIncludeDirectories>
-    </ClCompile>
-  </ItemDefinitionGroup>
+		<TripletStatic>x64-windows-static-md</TripletStatic>
+		<TripletDynamic>x64-windows</TripletDynamic>
+	</PropertyGroup>
 
-  <!-- ==== Debug 전용 설정 ==== -->
-  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
-    <Link>
-      <AdditionalLibraryDirectories>
-        $(VcpkgRoot)\installed\$(TripletStatic)\debug\lib;
-        $(VcpkgRoot)\installed\$(TripletDynamic)\debug\lib;
-        %(AdditionalLibraryDirectories)
-      </AdditionalLibraryDirectories>
-      <!-- DX11 기준: directxtk.lib / directxtex.lib / imgui.lib + Assimp import lib -->
-      <AdditionalDependencies>
-        directxtk.lib;
-        directxtex.lib;
-        imguid.lib;
-        assimp-vc143-mtd.lib;
-        %(AdditionalDependencies)
-      </AdditionalDependencies>
-    </Link>
+	<!-- ==== 공통: 포함 디렉터리 ==== -->
+	<ItemDefinitionGroup>
+		<ClCompile>
+			<AdditionalIncludeDirectories>
+				$(VcpkgRoot)\installed\$(TripletDynamic)\include;
+				$(VcpkgRoot)\installed\$(TripletStatic)\include;
+				%(AdditionalIncludeDirectories)
+			</AdditionalIncludeDirectories>
+		</ClCompile>
+	</ItemDefinitionGroup>
 
-    <!-- Assimp DLL 자동 복사 (Debug) -->
-    <PostBuildEvent>
-      <Command>
-        xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\assimp-vc143-mtd.dll" "$(OutDir)"
-      </Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
+	<!-- ==== Debug 전용 설정 ==== -->
+	<ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+		<Link>
+			<AdditionalLibraryDirectories>
+				$(VcpkgRoot)\installed\$(TripletDynamic)\debug\lib;
+				$(VcpkgRoot)\installed\$(TripletStatic)\debug\lib;
+				%(AdditionalLibraryDirectories)
+			</AdditionalLibraryDirectories>
+			<!-- DX11 기준: directxtk.lib / directxtex.lib / imgui.lib + Assimp import lib -->
+			<AdditionalDependencies>
+				PhysXFoundation_64.lib;
+				PhysXCommon_64.lib;
+				PhysX_64.lib;
+				PhysXExtensions_static_64.lib;
+				PhysXTask_static_64.lib;
+				PhysXCooking_64.lib;
 
-  <!-- ==== Release 전용 설정 ==== -->
-  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
-    <Link>
-      <AdditionalLibraryDirectories>
-        $(VcpkgRoot)\installed\$(TripletStatic)\lib;
-        $(VcpkgRoot)\installed\$(TripletDynamic)\lib;
-        %(AdditionalLibraryDirectories)
-      </AdditionalLibraryDirectories>
-      <AdditionalDependencies>
-        directxtk.lib;
-        directxtex.lib;
-        imgui.lib;
-        assimp-vc143-mt.lib;
-        %(AdditionalDependencies)
-      </AdditionalDependencies>
-    </Link>
+				directxtk.lib;
+				directxtex.lib;
+				imguid.lib;
+				assimp-vc143-mtd.lib;
+				%(AdditionalDependencies)
+			</AdditionalDependencies>
+		</Link>
 
-    <!-- Assimp DLL 자동 복사 (Release) -->
-    <PostBuildEvent>
-      <Command>
-        xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\assimp-vc143-mt.dll" "$(OutDir)"
-      </Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
+		<!-- Assimp DLL 자동 복사 (Debug) -->
+		<PostBuildEvent>
+			<Command>
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\assimp-vc143-mtd.dll"	"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysX*.dll"				"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\poly2tri.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\minizip.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\zlibd1.dll"				"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\kubazip.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\pugixml.dll"			"$(OutDir)" 2&gt;nul
+
+			</Command>
+		</PostBuildEvent>
+	</ItemDefinitionGroup>
+
+	<!-- ==== Release 전용 설정 ==== -->
+	<ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+		<Link>
+			<AdditionalLibraryDirectories>
+				$(VcpkgRoot)\installed\$(TripletDynamic)\lib;
+				$(VcpkgRoot)\installed\$(TripletStatic)\lib;
+				%(AdditionalLibraryDirectories)
+			</AdditionalLibraryDirectories>
+			<AdditionalDependencies>
+				PhysXFoundation_64.lib;
+				PhysXCommon_64.lib;
+				PhysX_64.lib;
+				PhysXExtensions_static_64.lib;
+				PhysXTask_static_64.lib;
+				PhysXCooking_64.lib;
+
+				directxtk.lib;
+				directxtex.lib;
+				imgui.lib;
+				assimp-vc143-mt.lib;
+				%(AdditionalDependencies)
+			</AdditionalDependencies>
+		</Link>
+
+		<!-- Assimp DLL 자동 복사 (Release) -->
+		<PostBuildEvent>
+			<Command>
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\assimp-vc143-mt.dll"	"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysX*.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\poly2tri.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\minizip.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\kubazip.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\pugixml.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\draco.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\zlib1.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\zlibd1.dll"			"$(OutDir)" 2&gt;nul
+			</Command>
+		</PostBuildEvent>
+	</ItemDefinitionGroup>
 </Project>
