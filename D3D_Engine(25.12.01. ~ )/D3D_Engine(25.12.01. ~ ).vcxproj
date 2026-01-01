@@ -105,6 +105,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -136,7 +137,8 @@ endlocal
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -157,6 +159,12 @@ endlocal
   <ItemGroup>
     <ClCompile Include="AssimpImporterEX.cpp" />
     <ClCompile Include="Material.cpp" />
+    <ClCompile Include="PhysX\PhysicsMath.h" />
+    <ClCompile Include="PhysX\IPhysicsWorld.h" />
+    <ClCompile Include="PhysX\PhysXContext.h" />
+    <ClCompile Include="PhysX\PhysXContext.cpp" />
+    <ClCompile Include="PhysX\PhysXWorld.h" />
+    <ClCompile Include="PhysX\PhysXWorld.cpp" />
     <ClCompile Include="RigidSkeletal.cpp" />
     <ClCompile Include="SkinnedMesh.cpp" />
     <ClCompile Include="SkinnedSkeletal.cpp" />

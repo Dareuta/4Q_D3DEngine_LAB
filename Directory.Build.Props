@@ -14,6 +14,7 @@
 	<ItemDefinitionGroup>
 		<ClCompile>
 			<AdditionalIncludeDirectories>
+				$(VcpkgRoot)\installed\$(TripletDynamic)\include\physx;
 				$(VcpkgRoot)\installed\$(TripletDynamic)\include;
 				$(VcpkgRoot)\installed\$(TripletStatic)\include;
 				%(AdditionalIncludeDirectories)
@@ -36,7 +37,7 @@
 				PhysX_64.lib;
 				PhysXExtensions_static_64.lib;
 				PhysXTask_static_64.lib;
-				PhysXCooking_64.lib;
+				PhysXCooking_64.lib;				
 
 				directxtk.lib;
 				directxtex.lib;

@@ -18,6 +18,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="WorkSpace\#PhysX">
+      <UniqueIdentifier>{2bf3fe88-0a16-46b9-8858-cb0816a5bf78}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AssimpImporterEX.cpp">
@@ -55,6 +58,24 @@
     </ClCompile>
     <ClCompile Include="TutorialApp\TutorialApp_SceneInit.cpp">
       <Filter>WorkSpace\#App</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysX\PhysicsMath.h">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysX\IPhysicsWorld.h">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysX\PhysXContext.h">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysX\PhysXContext.cpp">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysX\PhysXWorld.h">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysX\PhysXWorld.cpp">
+      <Filter>WorkSpace\#PhysX</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
