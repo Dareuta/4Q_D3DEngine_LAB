@@ -74,19 +74,7 @@
     <ClCompile Include="PhysX\PhysXWorld.h">
       <Filter>WorkSpace\#PhysX</Filter>
     </ClCompile>
-    <ClCompile Include="PhysX\PhysXWorld_Bodies.cpp">
-      <Filter>WorkSpace\#PhysX</Filter>
-    </ClCompile>
-    <ClCompile Include="PhysX\PhysXWorld_CCT.cpp">
-      <Filter>WorkSpace\#PhysX</Filter>
-    </ClCompile>
-    <ClCompile Include="PhysX\PhysXWorld_Core.cpp">
-      <Filter>WorkSpace\#PhysX</Filter>
-    </ClCompile>
-    <ClCompile Include="PhysX\PhysXWorld_Joints.cpp">
-      <Filter>WorkSpace\#PhysX</Filter>
-    </ClCompile>
-    <ClCompile Include="PhysX\PhysXWorld_Queries.cpp">
+    <ClCompile Include="PhysX\PhysXWorld.cpp">
       <Filter>WorkSpace\#PhysX</Filter>
     </ClCompile>
   </ItemGroup>
@@ -117,9 +105,6 @@
     </ClInclude>
     <ClInclude Include="TutorialApp\TutorialApp.h">
       <Filter>WorkSpace\#App</Filter>
-    </ClInclude>
-    <ClInclude Include="PhysX\PhysXWorld_Internal.h">
-      <Filter>WorkSpace\#PhysX</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
