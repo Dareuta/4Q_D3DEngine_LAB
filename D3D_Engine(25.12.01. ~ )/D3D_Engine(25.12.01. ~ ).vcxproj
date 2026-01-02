@@ -113,17 +113,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
-      <Command>setlocal
-set BIN="$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin"
-
-xcopy /Y /D %BIN%\assimp-vc143-mtd.dll "$(OutDir)"
-xcopy /Y /D %BIN%\poly2tri.dll       "$(OutDir)" 2&gt;nul
-xcopy /Y /D %BIN%\minizip.dll        "$(OutDir)" 2&gt;nul
-xcopy /Y /D %BIN%\zlibd1.dll         "$(OutDir)" 2&gt;nul
-xcopy /Y /D %BIN%\kubazip.dll        "$(OutDir)" 2&gt;nul
-xcopy /Y /D %BIN%\pugixml.dll        "$(OutDir)" 2&gt;nul
-endlocal
-</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>
