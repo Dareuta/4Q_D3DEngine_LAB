@@ -426,7 +426,7 @@ private:
 		float toonShadowMin = 0.02f;
 
 		bool useDeferred = true;
-				
+
 		bool showGBuffer = false;
 
 		bool showGBufferFS = false;
@@ -573,7 +573,7 @@ private:
 	// Forces
 	Vec3  mPhysImpulse = Vec3(0, 300.0f, 0);
 	Vec3  mPhysTorque = Vec3(0, 0, 50.0f);
-	bool  mPhysUseTorque = false;
+	bool  mPhysUseTorque = true;
 
 	// Material quick override
 	float mPhysMatStaticFriction = 0.6f;

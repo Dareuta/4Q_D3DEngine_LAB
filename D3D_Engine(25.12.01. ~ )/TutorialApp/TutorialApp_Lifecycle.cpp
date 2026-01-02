@@ -39,9 +39,7 @@ bool TutorialApp::OnInitialize()
 		mPxCtx = std::make_unique<PhysXContext>(cdesc);
 
 		PhysXWorld::Desc wdesc{};
-		// 너 좌표가 -200, 100, 300 이런 스케일이라 "cm 단위"일 가능성이 큼.
-		// cm 단위면 중력은 -981이 자연스럽고, meter 단위면 -9.81로 바꿔.
-		wdesc.gravity = { 0.0f, -0.09810f, 0.0f }; // 디버깅 용도로 임의 조정함
+		wdesc.gravity = { 0.0f, -981.00f, 0.0f }; // 디버깅 용도로 임의 조정함
 
 		wdesc.enableSceneLocks = true;
 		wdesc.enableActiveTransforms = true;
@@ -58,6 +56,8 @@ bool TutorialApp::OnInitialize()
 	// =========================================================================
 	if (!InitScene())
 		return false;
+
+	mPhysAccum = 0; // 혹시모르니 초기화 한번
 
 	return true;
 }
@@ -111,14 +111,21 @@ void TutorialApp::OnUpdate()
 
 			if (!timeStopped && !mPhysPaused)
 			{
-				const float dtPhys = GameTimer::m_Instance->DeltaTime();
-				mPhysAccum += dtPhys;
+				float dtPhys = GameTimer::m_Instance->DeltaTime();
 
-				int maxSubSteps = mPhysMaxSubSteps;
-				while (mPhysAccum >= mPhysFixedDt && maxSubSteps-- > 0)
+				// 로딩/첫 프레임 hitch 방어: dt 상한 (예: 50ms)
+				dtPhys = std::clamp(dtPhys, 0.0f, 0.05f);
+
+				// accumulator도 상한: 최대 maxSubSteps 만큼만 따라잡게
+				const float maxAccum = mPhysFixedDt * (float)mPhysMaxSubSteps;
+				mPhysAccum = min(mPhysAccum + dtPhys, maxAccum);
+
+				int steps = 0;
+				while (mPhysAccum >= mPhysFixedDt && steps < mPhysMaxSubSteps)
 				{
 					mPxWorld->Step(mPhysFixedDt);
 					mPhysAccum -= mPhysFixedDt;
+					++steps;
 				}
 			}
 			else
@@ -547,11 +554,8 @@ void TutorialApp::TeleportDropBody(int idx, const Vec3& p, const Quat& q, bool r
 	IRigidBody* b = mDropBody[idx].get();
 	if (!b) return;
 
-	// Kinematic이면 target 방식이 더 “물리스럽게” 움직임
-	if (b->IsKinematic())
-		b->SetKinematicTarget(p, q);
-	else
-		b->SetTransform(p, q);
+	// "Teleport"는 즉시 pose 변경이 목적이니까 kinematic이어도 SetTransform이 맞다.
+	b->SetTransform(p, q);
 
 	if (resetVel)
 	{
@@ -562,6 +566,7 @@ void TutorialApp::TeleportDropBody(int idx, const Vec3& p, const Quat& q, bool r
 	if (wake)
 		b->WakeUp();
 }
+
 
 void TutorialApp::ResetDropBody(int idx, bool resetVel)
 {

@@ -165,7 +165,7 @@ void TutorialApp::UpdateImGUI()
 	// ========================================================================
 	ImGui::SetNextWindowSize(ImVec2(500, 1080), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowPos(ImVec2(1420, 0), ImGuiCond_FirstUseEver);
-	if (ImGui::Begin("물리(PhysX)"), ImGuiTreeNodeFlags_DefaultOpen)
+	if (ImGui::Begin("물리(PhysX)"))
 	{
 		// --------------------------------------------------------------------
 		// Physics (PhysX)
@@ -180,8 +180,14 @@ void TutorialApp::UpdateImGUI()
 			mPhysAccum = 0.0f;
 
 		ImGui::SameLine();
+		ImGui::BeginDisabled(mDbg.freezeTime || !mPxWorld);
 		if (ImGui::Button("Step 1 tick"))
-			mPhysStepOnce = true;
+		{
+			mPhysPaused = true;     // 자동으로 멈춰놓고
+			mPhysStepOnce = true;   // 한 틱만
+			mPhysAccum = 0.0f;      // 누적 dt 폭주 방지
+		}
+		ImGui::EndDisabled();
 
 		ImGui::TextDisabled("Tip: Freeze Time은 애니메이션까지 멈춤. Pause는 물리만 멈춤.");
 
@@ -235,7 +241,12 @@ void TutorialApp::UpdateImGUI()
 			ImGui::Text("LinVel: (%.2f, %.2f, %.2f)", lv.x, lv.y, lv.z);
 			ImGui::Text("AngVel: (%.2f, %.2f, %.2f)", av.x, av.y, av.z);
 			ImGui::Text("Awake: %s", b->IsAwake() ? "YES" : "NO");
-
+			ImGui::Text("Mass: %.3f", b->GetMass());
+			ImGui::Text("Kinematic: %s", b->IsKinematic() ? "YES" : "NO");
+			ImGui::Text("PhysEnable: %s  Paused: %s  FreezeTime: %s",
+				mPhysEnable ? "YES" : "NO",
+				mPhysPaused ? "YES" : "NO",
+				mDbg.freezeTime ? "YES" : "NO");
 			bool kin = b->IsKinematic();
 			if (ImGui::Checkbox("Kinematic", &kin)) b->SetKinematic(kin);
 			ImGui::SameLine();
@@ -286,17 +297,41 @@ void TutorialApp::UpdateImGUI()
 			if (ImGui::Button("-Z")) { NudgeSelectedDrop({ 0, 0, -mPhysNudgeStep }); }
 
 			ImGui::SeparatorText("Forces");
+
+			const bool isKin = b->IsKinematic();
+			ImGui::BeginDisabled(isKin);
+
+			static bool s_ignoreMass = true;
+			ImGui::Checkbox("Ignore mass (VelocityChange)", &s_ignoreMass);
+
 			ImGui::DragFloat3("Impulse", (float*)&mPhysImpulse, 1.0f, -50000.0f, 50000.0f, "%.1f");
 			ImGui::SameLine();
-			if (ImGui::Button("Apply Impulse")) { b->AddImpulse(mPhysImpulse); }
+			if (ImGui::Button("Apply"))
+			{
+				if (s_ignoreMass)
+					b->AddForceEx(mPhysImpulse, ForceMode::VelocityChange, true); // 질량 무시
+				else
+					b->AddImpulse(mPhysImpulse); // 진짜 impulse
+			}
 
 			ImGui::Checkbox("Use Torque", &mPhysUseTorque);
 			if (mPhysUseTorque)
 			{
 				ImGui::DragFloat3("Torque", (float*)&mPhysTorque, 1.0f, -50000.0f, 50000.0f, "%.1f");
 				ImGui::SameLine();
-				if (ImGui::Button("Apply Torque")) { b->AddTorque(mPhysTorque); }
+				if (ImGui::Button("Apply Torque")) {
+					if (s_ignoreMass)
+						b->AddTorqueEx(mPhysTorque, ForceMode::VelocityChange, true);
+					else
+						b->AddTorque(mPhysTorque);
+				}
 			}
+
+			ImGui::EndDisabled();
+
+			if (isKin)
+				ImGui::TextDisabled("Kinematic 바디는 Force/Impulse/Torque 영향을 받지 않음.");
+
 
 			ImGui::SeparatorText("Material Quick Override");
 			ImGui::DragFloat("StaticFriction", &mPhysMatStaticFriction, 0.01f, 0.0f, 3.0f, "%.2f");
@@ -314,17 +349,26 @@ void TutorialApp::UpdateImGUI()
 			}
 
 			ImGui::Separator();
-			if (ImGui::Button("폭발(Explode)"))
+			if (ImGui::Button("폴짝"))
 			{
 				// 간단한 테스트: 4개에 서로 다른 방향 임펄스
 				static const Vec3 kImp[kDropCount] = {
-					{ -400.0f, 700.0f,  0.0f },
+					{ -40000.0f, 700.0f,  0.0f },
 					{ +400.0f, 700.0f,  0.0f },
 					{  0.0f,  700.0f, -400.0f },
 					{  0.0f,  700.0f, +400.0f },
 				};
-				for (int i = 0; i < kDropCount; ++i)
-					if (mDropBody[i]) mDropBody[i]->AddImpulse(kImp[i]);
+
+
+				if (s_ignoreMass) {
+					for (int i = 0; i < kDropCount; ++i)
+						if (mDropBody[i]) mDropBody[i]->AddForceEx(kImp[i], ForceMode::VelocityChange, true);
+				}
+				else {
+					for (int i = 0; i < kDropCount; ++i)
+						if (mDropBody[i]) mDropBody[i]->AddImpulse(kImp[i]);
+				}
+
 			}
 		}
 		else
