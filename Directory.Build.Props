@@ -1,108 +1,133 @@
 ﻿<Project>
-	<!-- ==== 경로/트리플릿 공통 설정 ==== -->
+  <!-- =========================================================
+       vcpkg 공통 설정
+       - Static/Dynamic 둘 다 사용 (경로만)
+       - 런타임 DLL은 Dynamic 쪽 bin에서만 복사
+       ========================================================= -->
 	<PropertyGroup>
-		<!-- vcpkg 루트 경로: 필요시 본인 경로로 수정 -->
-		<!-- C:\Users\A\Documents\GitHub\vcpkg -->
-		<!-- C:\Users\User\Documents\GitHub\vcpkg -->
-		<VcpkgRoot>C:\Users\User\Documents\GitHub\vcpkg</VcpkgRoot>
+        <VcpkgRoot Condition="'$(VCPKG_ROOT)' != '' and Exists('$(VCPKG_ROOT)')">$(VCPKG_ROOT)</VcpkgRoot>
+        <VcpkgRoot Condition="'$(VcpkgRoot)' == '' and Exists('C:\Users\User\Documents\GitHub\vcpkg')">C:\Users\User\Documents\GitHub\vcpkg</VcpkgRoot>
+        <VcpkgRoot Condition="'$(VcpkgRoot)' == '' and Exists('C:\Users\A\Documents\GitHub\vcpkg')">C:\Users\A\Documents\GitHub\vcpkg</VcpkgRoot>
 
-		<TripletStatic>x64-windows-static-md</TripletStatic>
+
 		<TripletDynamic>x64-windows</TripletDynamic>
+		<TripletStatic>x64-windows-static-md</TripletStatic>
+		
+		<VcpkgRuntimeTriplet>$(TripletDynamic)</VcpkgRuntimeTriplet>
+		<VcpkgRuntimeTriplet Condition="'$(VcpkgRuntimeTriplet)'==''">x64-windows</VcpkgRuntimeTriplet>
+
+		<VcpkgRuntimeBinDir Condition="'$(Configuration)'=='Debug'">$(VcpkgRoot)\installed\$(VcpkgRuntimeTriplet)\debug\bin</VcpkgRuntimeBinDir>
+		<VcpkgRuntimeBinDir Condition="'$(Configuration)'!='Debug'">$(VcpkgRoot)\installed\$(VcpkgRuntimeTriplet)\bin</VcpkgRuntimeBinDir>
 	</PropertyGroup>
 
-	<!-- ==== 공통: 포함 디렉터리 ==== -->
-	<ItemDefinitionGroup>
-		<ClCompile>
-			<AdditionalIncludeDirectories>
-				$(VcpkgRoot)\installed\$(TripletDynamic)\include\physx;
-				$(VcpkgRoot)\installed\$(TripletDynamic)\include;
-				$(VcpkgRoot)\installed\$(TripletStatic)\include;
-				%(AdditionalIncludeDirectories)
-			</AdditionalIncludeDirectories>
-		</ClCompile>
-	</ItemDefinitionGroup>
+	<!-- =========================================================
+       공통 include (Dynamic 먼저, Static 추가)
+       ========================================================= -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(VcpkgRoot)\installed\$(TripletDynamic)\include;
+        $(VcpkgRoot)\installed\$(TripletDynamic)\include\physx;
+        $(VcpkgRoot)\installed\$(TripletStatic)\include;
+        $(VcpkgRoot)\installed\$(TripletStatic)\include\physx;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
 
-	<!-- ==== Debug 전용 설정 ==== -->
-	<ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
-		<Link>
-			<AdditionalLibraryDirectories>
-				$(VcpkgRoot)\installed\$(TripletDynamic)\debug\lib;
-				$(VcpkgRoot)\installed\$(TripletStatic)\debug\lib;
-				%(AdditionalLibraryDirectories)
-			</AdditionalLibraryDirectories>
-			<!-- DX11 기준: directxtk.lib / directxtex.lib / imgui.lib + Assimp import lib -->
-			<AdditionalDependencies>
-				PhysXFoundation_64.lib;
-				PhysXCommon_64.lib;
-				PhysX_64.lib;
-				PhysXCooking_64.lib;
-				PhysXExtensions_static_64.lib;
-				PhysXCharacterKinematic_static_64.lib;
-				PhysXPvdSDK_static_64.lib;
-				PhysXTask_static_64.lib;
+  <!-- =========================================================
+       Debug 링크 (Dynamic/Static lib 둘 다)
+       ========================================================= -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <Link>
+      <AdditionalLibraryDirectories>
+        $(VcpkgRoot)\installed\$(TripletDynamic)\debug\lib;
+        $(VcpkgRoot)\installed\$(TripletStatic)\debug\lib;
+        %(AdditionalLibraryDirectories)
+      </AdditionalLibraryDirectories>
 
-				directxtk.lib;
-				directxtex.lib;
-				imguid.lib;
-				assimp-vc143-mtd.lib;
-				%(AdditionalDependencies)
-			</AdditionalDependencies>
-		</Link>
+      <AdditionalDependencies>
+        PhysXFoundation_64.lib;
+        PhysXCommon_64.lib;
+        PhysX_64.lib;
+        PhysXCooking_64.lib;
+        PhysXExtensions_static_64.lib;
+        PhysXCharacterKinematic_static_64.lib;
+        PhysXPvdSDK_static_64.lib;
+        PhysXTask_static_64.lib;
 
-		<!-- Assimp DLL 자동 복사 (Debug) -->
-		<PostBuildEvent>
-			<Command>
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\assimp-vc143-mtd.dll"	"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysX*.dll"				"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\poly2tri.dll"			"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\minizip.dll"			"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\zlibd1.dll"				"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\kubazip.dll"			"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\pugixml.dll"			"$(TargetDir)"
+        directxtk.lib;
+        directxtex.lib;
+        imguid.lib;
+        assimp-vc143-mtd.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
 
-			</Command>
-		</PostBuildEvent>
-	</ItemDefinitionGroup>
+  <!-- =========================================================
+       Release 링크 (Dynamic/Static lib 둘 다)
+       ========================================================= -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <Link>
+      <AdditionalLibraryDirectories>
+        $(VcpkgRoot)\installed\$(TripletDynamic)\lib;
+        $(VcpkgRoot)\installed\$(TripletStatic)\lib;
+        %(AdditionalLibraryDirectories)
+      </AdditionalLibraryDirectories>
 
-	<!-- ==== Release 전용 설정 ==== -->
-	<ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
-		<Link>
-			<AdditionalLibraryDirectories>
-				$(VcpkgRoot)\installed\$(TripletDynamic)\lib;
-				$(VcpkgRoot)\installed\$(TripletStatic)\lib;
-				%(AdditionalLibraryDirectories)
-			</AdditionalLibraryDirectories>
-			<AdditionalDependencies>
-				PhysXFoundation_64.lib;
-				PhysXCommon_64.lib;
-				PhysX_64.lib;
-				PhysXCooking_64.lib;
-				PhysXExtensions_static_64.lib;
-				PhysXCharacterKinematic_static_64.lib;
-				PhysXPvdSDK_static_64.lib;
-				PhysXTask_static_64.lib;
+      <AdditionalDependencies>
+        PhysXFoundation_64.lib;
+        PhysXCommon_64.lib;
+        PhysX_64.lib;
+        PhysXCooking_64.lib;
+        PhysXExtensions_static_64.lib;
+        PhysXCharacterKinematic_static_64.lib;
+        PhysXPvdSDK_static_64.lib;
+        PhysXTask_static_64.lib;
 
-				directxtk.lib;
-				directxtex.lib;
-				imgui.lib;
-				assimp-vc143-mt.lib;
-				%(AdditionalDependencies)
-			</AdditionalDependencies>
-		</Link>
+        directxtk.lib;
+        directxtex.lib;
+        imgui.lib;
+        assimp-vc143-mt.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
 
-		<!-- Assimp DLL 자동 복사 (Release) -->
-		<PostBuildEvent>
-			<Command>
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\assimp-vc143-mt.dll"	"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysX*.dll"			"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\poly2tri.dll"			"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\minizip.dll"			"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\kubazip.dll"			"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\pugixml.dll"			"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\draco.dll"			"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\zlib1.dll"			"$(TargetDir)"
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\zlibd1.dll"			"$(TargetDir)"
-			</Command>
-		</PostBuildEvent>
-	</ItemDefinitionGroup>
+  <!-- =========================================================
+       런타임 DLL 목록 (Dynamic bin에서만)
+       - EXE 옆(TargetDir)로 복사
+       ========================================================= -->
+  <ItemGroup>
+    <!-- PhysX 런타임 핵심 4개 -->
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\PhysXFoundation_64.dll" />
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\PhysXCommon_64.dll" />
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\PhysX_64.dll" />
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\PhysXCooking_64.dll" />
+
+    <!-- assimp는 이름이 환경 따라 바뀔 수 있으니 dll은 와일드카드가 안전 -->
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\assimp*.dll" />
+
+    <!-- zlib: Debug/Release 분기 -->
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\zlibd1.dll" Condition="'$(Configuration)'=='Debug'" />
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\zlib1.dll"  Condition="'$(Configuration)'!='Debug'" />
+
+    <!-- 기타 런타임 -->
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\pugixml.dll" />
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\minizip.dll" />
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\poly2tri.dll" />
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\kubazip.dll" />
+    <VcpkgRuntimeDlls Include="$(VcpkgRuntimeBinDir)\draco.dll" Condition="'$(Configuration)'!='Debug'" />
+  </ItemGroup>
+
+  <!-- EXE 프로젝트에서만 복사 -->
+  <Target Name="CopyVcpkgRuntimeDlls" AfterTargets="Build"
+          Condition="'$(ConfigurationType)'=='Application'">
+    <Message Importance="high" Text="Copying vcpkg DLLs from $(VcpkgRuntimeBinDir) to $(TargetDir)" />
+    <Error Condition="!Exists('$(VcpkgRuntimeBinDir)')" Text="Vcpkg bin dir not found: $(VcpkgRuntimeBinDir)" />
+    <Copy SourceFiles="@(VcpkgRuntimeDlls)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>
