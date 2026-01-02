@@ -545,8 +545,7 @@ private:
 	StaticMesh                 mDropMesh[kDropCount];
 	std::vector<MaterialGPU>   mDropMtls[kDropCount];
 	Matrix                     mDropWorld[kDropCount];
-
-	std::unique_ptr<IPhysicsActor>  mPxFloor;
+		
 	std::unique_ptr<IRigidBody>     mDropBody[kDropCount];
 
 	int   mPhysMaxSubSteps = 8;

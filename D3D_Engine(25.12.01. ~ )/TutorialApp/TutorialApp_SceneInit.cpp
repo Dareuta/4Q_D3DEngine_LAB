@@ -554,7 +554,7 @@ bool TutorialApp::InitScene()
 			{ L"../Resource/FBX/IcoSphere.fbx", L"../Resource/FBX/" },
 			{ L"../Resource/FBX/sphere.fbx",    L"../Resource/FBX/" },
 			{ L"../Resource/FBX/box.fbx",       L"../Resource/FBX/" },
-			{ L"../Resource/v/Torus.fbx",     L"../Resource/FBX/" },
+			{ L"../Resource/FBX/Torus.fbx",     L"../Resource/FBX/" },
 		};
 
 		for (int i = 0; i < kDropCount; ++i)
@@ -606,7 +606,7 @@ bool TutorialApp::InitScene()
 
 			const float floorTopY = mGridY; // grid 선이 있는 Y
 			const Vec3 floorPos = { 0.0f, floorTopY - floor.halfExtents.y, 0.0f };
-			mPxFloor = mPxWorld->CreateStaticBox(floorPos, Quat::Identity, floor);
+			mPhysGround = mPxWorld->CreateStaticBox(floorPos, Quat::Identity, floor);
 
 			// 3) Bounds 계산 유틸		
 			auto GetPos = [](const auto& v) -> Vec3
@@ -1315,8 +1315,7 @@ void TutorialApp::UninitScene()
 	// === [ADD] PhysX cleanup =====================================================
 	for (int i = 0; i < kDropCount; ++i)
 		mDropBody[i].reset();
-
-	mPxFloor.reset();
+		
 	mPxWorld.reset();
 	mPxCtx.reset();
 	// ============================================================================
