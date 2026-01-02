@@ -51,6 +51,9 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 
+#include "../PhysX/PhysXContext.h"
+#include "../PhysX/PhysXWorld.h"
+
 // ============================================================================
 // TutorialApp
 // ============================================================================
@@ -383,6 +386,9 @@ private:
 	{
 		Vector3 pos{ 0, 0, 0 };
 		Vector3 rotD{ 0, 0, 0 }; // degrees
+		DirectX::SimpleMath::Quaternion rotQ = DirectX::SimpleMath::Quaternion::Identity;
+		bool useQuat = false; // true면 rotQ 사용, false면 rotD 사용
+
 		Vector3 scl{ 1, 1, 1 };
 
 		Vector3 initPos{ 0, 0, 0 };
@@ -442,12 +448,21 @@ private:
 		using namespace DirectX::SimpleMath;
 
 		const Matrix S = Matrix::CreateScale(xf.scl);
-		const Matrix R = Matrix::CreateFromYawPitchRoll(
-			XMConvertToRadians(xf.rotD.y),
-			XMConvertToRadians(xf.rotD.x),
-			XMConvertToRadians(xf.rotD.z));
-		const Matrix T = Matrix::CreateTranslation(xf.pos);
 
+		Matrix R;
+		if (xf.useQuat)
+		{
+			R = Matrix::CreateFromQuaternion(xf.rotQ);
+		}
+		else
+		{
+			R = Matrix::CreateFromYawPitchRoll(
+				XMConvertToRadians(xf.rotD.y),
+				XMConvertToRadians(xf.rotD.x),
+				XMConvertToRadians(xf.rotD.z));
+		}
+
+		const Matrix T = Matrix::CreateTranslation(xf.pos);
 		return S * R * T;
 	}
 
@@ -505,6 +520,42 @@ private:
 	XformUI      mSkinX;
 
 	DebugToggles mDbg;
+
+	// =========================================================================
+	// Physics (PhysX)
+	// =========================================================================
+	std::unique_ptr<PhysXContext> mPxCtx;
+	std::unique_ptr<PhysXWorld>   mPxWorld;
+
+	// Fixed timestep
+	float mPhysFixedDt = 1.0f / 60.0f;
+	float mPhysAccum = 0.0f;
+
+	// Step() 이후 moved-body 결과/이벤트 버퍼
+	std::vector<ActiveTransform> mPhysMoved;
+	std::vector<PhysicsEvent>    mPhysEvents;
+
+	// 테스트용 핸들(원하면 씬 init에서 생성해서 씀)
+	std::unique_ptr<IPhysicsActor> mPhysGround;
+	std::unique_ptr<IRigidBody>    mPhysTestBody;
+
+	// === [ADD] Physics Drop Test =================================================
+	static constexpr int kDropCount = 4;
+
+	StaticMesh                 mDropMesh[kDropCount];
+	std::vector<MaterialGPU>   mDropMtls[kDropCount];
+	Matrix                     mDropWorld[kDropCount];
+
+	std::unique_ptr<IPhysicsActor>  mPxFloor;
+	std::unique_ptr<IRigidBody>     mDropBody[kDropCount];
+
+	int   mPhysMaxSubSteps = 8;
+	bool  mPhysEnable = true;
+
+	void TickPhysicsDrop(float dt);
+	void SyncDropFromPhysics();
+
+	// =========================================================================
 
 	Vector4 vLightDir;
 	Vector4 vLightColor;

@@ -382,7 +382,7 @@ void TutorialApp::UpdateImGUI()
 		// --------------------------------------------------------------------
 		// PBR + ToneMap
 		// --------------------------------------------------------------------
-		if (ImGui::CollapsingHeader("PBR (Physically Based Rendering)", ImGuiTreeNodeFlags_DefaultOpen))
+		if (ImGui::CollapsingHeader("PBR (Physically Based Rendering)"))//, ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::Checkbox("PBR 사용(Enable)", &mPbr.enable);
 
@@ -425,7 +425,7 @@ void TutorialApp::UpdateImGUI()
 			ImGui::ColorEdit3("Env Spec Color", (float*)&mPbr.envSpecColor);
 			ImGui::SliderFloat("Env Spec Intensity", &mPbr.envSpecIntensity, 0.0f, 3.0f, "%.3f");
 
-			if (ImGui::CollapsingHeader("톤매핑(Tone Mapping) - HDR -> LDR", ImGuiTreeNodeFlags_DefaultOpen))
+			if (ImGui::CollapsingHeader("톤매핑(Tone Mapping) - HDR -> LDR"))//, ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				ImGui::Checkbox("SceneHDR 사용(HDR RT로 렌더)", &mTone.useSceneHDR);
 				ImGui::Checkbox("ToneMap 적용(Enable)", &mTone.enable);
@@ -596,7 +596,7 @@ void TutorialApp::UpdateImGUI()
 
 		if (ImGui::Begin("그림자(Shadow)", &mDbg.showShadowWindow))
 		{
-			if (ImGui::CollapsingHeader("그림자(Shadow)", ImGuiTreeNodeFlags_DefaultOpen))
+			if (ImGui::CollapsingHeader("그림자(Shadow)"))//, ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				ImGui::Checkbox("섀도우맵 미리보기(Show ShadowMap)", &mShUI.showSRV);
 				ImGui::Checkbox("그리드 표시(Show Grid)", &mDbg.showGrid);
@@ -667,7 +667,7 @@ void TutorialApp::UpdateImGUI()
 
 		if (ImGui::Begin("G-Buffer", &mDbg.showGBuffer))
 		{
-			if (ImGui::CollapsingHeader("지연 셰이딩(Deferred) / G-Buffer", ImGuiTreeNodeFlags_DefaultOpen))
+			if (ImGui::CollapsingHeader("지연 셰이딩(Deferred) / G-Buffer"))//, ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				ImGui::Checkbox("Deferred Shading (Opaque)##deferred", &mDbg.useDeferred);
 				ImGui::TextDisabled("(투명/머리카락은 마지막에 Forward Overlay)");

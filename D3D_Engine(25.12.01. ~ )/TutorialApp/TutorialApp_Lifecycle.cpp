@@ -28,6 +28,32 @@ bool TutorialApp::OnInitialize()
 #endif
 
     // =========================================================================
+    // 2.5) Physics (PhysX)
+    // =========================================================================
+    {
+        PhysXContextDesc cdesc{};
+        cdesc.enablePvd = false;          // 필요하면 true로 (링크/배포 셋업 완료 후)
+        cdesc.dispatcherThreads = 2;      // 일단 고정 (원하면 하드웨어 코어 기반으로 바꿔도 됨)
+        cdesc.enableCooking = true;
+
+        mPxCtx = std::make_unique<PhysXContext>(cdesc);
+
+        PhysXWorld::Desc wdesc{};
+        // 너 좌표가 -200, 100, 300 이런 스케일이라 "cm 단위"일 가능성이 큼.
+        // cm 단위면 중력은 -981이 자연스럽고, meter 단위면 -9.81로 바꿔.
+        wdesc.gravity = { 0.0f, -0.09810f, 0.0f }; // 디버깅 용도로 임의 조정함
+
+        wdesc.enableSceneLocks = true;
+        wdesc.enableActiveTransforms = true;
+        wdesc.enableContactEvents = true;
+        wdesc.enableContactPoints = false;
+        wdesc.enableContactModify = false;
+        wdesc.enableCCD = false;
+
+        mPxWorld = std::make_unique<PhysXWorld>(*mPxCtx, wdesc);
+    }
+
+    // =========================================================================
     // 3) Scene / Assets
     // =========================================================================
     if (!InitScene())
@@ -42,6 +68,14 @@ void TutorialApp::OnUninitialize()
     // 0) Scene
     // =========================================================================
     UninitScene();
+
+    // =========================================================================
+    // 0.5) Physics shutdown (Scene 이후에 정리)
+    // =========================================================================
+    mPhysTestBody.reset();
+    mPhysGround.reset();
+    mPxWorld.reset();
+    mPxCtx.reset();
 
 #ifdef _DEBUG
     // =========================================================================
@@ -64,6 +98,37 @@ void TutorialApp::OnUpdate()
     static float tHold = 0.0f;
     if (!mDbg.freezeTime) tHold = GameTimer::m_Instance->TotalTime();
     const float t = tHold;
+
+    // =========================================================================
+    // 0.5) Physics step (fixed timestep) + apply moved transforms
+    // =========================================================================
+    if (mPxWorld)
+    {
+        const float dtPhys = mDbg.freezeTime ? 0.0f : GameTimer::m_Instance->DeltaTime();
+        mPhysAccum += dtPhys;
+
+        int maxSubSteps = 8; // 프레임 드랍 시 폭주 방지
+        while (mPhysAccum >= mPhysFixedDt && maxSubSteps-- > 0)
+        {
+            mPxWorld->Step(mPhysFixedDt);
+            mPhysAccum -= mPhysFixedDt;
+        }
+
+        // 움직인 바디만 반영
+        mPxWorld->DrainActiveTransforms(mPhysMoved);
+        for (const ActiveTransform& at : mPhysMoved)
+        {
+            XformUI* xf = reinterpret_cast<XformUI*>(at.userData);
+            if (!xf) continue;
+
+            xf->pos = { at.position.x, at.position.y, at.position.z };
+            xf->rotQ = at.rotation;
+            xf->useQuat = true;
+        }
+
+        // 이벤트는 당장 안 써도 되지만, 버퍼 비워두는 건 좋음
+        mPxWorld->DrainEvents(mPhysEvents);
+    }
 
     // =========================================================================
     // 1) Simple world animation (기존 큐브)
@@ -123,6 +188,16 @@ void TutorialApp::OnUpdate()
 
         mSkinRig->EvaluatePose(mSkinAC.t, mSkinAC.loop);
     }
+
+    // === [ADD] Physics tick ======================================================
+    if (mPhysEnable && mPxWorld)
+    {
+        const float dtf = (float)GameTimer::m_Instance->DeltaTime();
+        if (!mDbg.freezeTime) TickPhysicsDrop(dtf);
+        else                 SyncDropFromPhysics(); // 멈춰도 렌더는 맞춰두기
+    }
+    // ============================================================================
+
 }
 
 void TutorialApp::OnRender()
@@ -431,6 +506,42 @@ void TutorialApp::OnRender()
     // =========================================================================
     m_pSwapChain->Present(1, 0);
 }
+
+// === [ADD] Physics Drop Tick / Sync =========================================
+void TutorialApp::TickPhysicsDrop(float dt)
+{
+    if (!mPxWorld) return;
+
+    mPhysAccum += dt;
+
+    int steps = 0;
+    while (mPhysAccum >= mPhysFixedDt && steps < mPhysMaxSubSteps)
+    {
+        mPxWorld->Step(mPhysFixedDt);
+        mPhysAccum -= mPhysFixedDt;
+        ++steps;
+    }
+
+    SyncDropFromPhysics();
+}
+
+void TutorialApp::SyncDropFromPhysics()
+{
+    for (int i = 0; i < kDropCount; ++i)
+    {
+        if (!mDropBody[i]) continue;
+
+        const Vec3 p = mDropBody[i]->GetPosition();
+        const Quat q = mDropBody[i]->GetRotation();
+
+        const Matrix R = Matrix::CreateFromQuaternion(q);
+        const Matrix T = Matrix::CreateTranslation(p);
+        mDropWorld[i] = R * T;
+    }
+}
+// ============================================================================
+
+
 
 #ifdef _DEBUG
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);

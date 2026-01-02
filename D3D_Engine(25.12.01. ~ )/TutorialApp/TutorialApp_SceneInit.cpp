@@ -7,6 +7,7 @@
 
 #include <d3dcompiler.h>
 #include <algorithm>
+#include <cfloat>
 
 // ============================================================================
 // Utility
@@ -485,14 +486,14 @@ bool TutorialApp::InitScene()
 	// 6) Initial transforms
 	// =========================================================================
 	mTreeX.pos = { -100, -150, 100 };  mTreeX.initPos = mTreeX.pos;  mTreeX.scl = { 100,100,100 };
-	mCharX.pos = { 100, -150, 100 };  mCharX.initPos = mCharX.pos;
+	mCharX.pos = { 0 , 3000, -500 };  mCharX.initPos = mCharX.pos;
 	mZeldaX.pos = { 0, -150, 350 };  mZeldaX.initPos = mZeldaX.pos;
 	mBoxX.pos = { -200, -150, 400 };  mBoxX.scl = { 0.2f,0.2f,0.2f };
 	mSkinX.pos = { 200, -150, 400 };
 	mFemaleX.pos = { 0, -180, 200 };
 
-	mTreeX.enabled = mCharX.enabled = mZeldaX.enabled = true;
-	mBoxX.enabled = mSkinX.enabled = false;
+	mCharX.enabled = true;
+	mTreeX.enabled = mZeldaX.enabled = mBoxX.enabled = mSkinX.enabled = false;
 
 	mTreeX.initScl = mTreeX.scl;  mCharX.initScl = mCharX.scl;  mZeldaX.initScl = mZeldaX.scl;
 	mTreeX.initRotD = mTreeX.rotD; mCharX.initRotD = mCharX.rotD; mZeldaX.initRotD = mZeldaX.rotD;
@@ -506,6 +507,22 @@ bool TutorialApp::InitScene()
 	// 7) Load FBX + build GPU
 	// =========================================================================
 	{
+		//================================================================================
+		auto BuildAllKeepCPU = [&](const std::wstring& fbx, const std::wstring& texDir,
+			StaticMesh& mesh, std::vector<MaterialGPU>& mtls, MeshData_PNTT& outCpu)
+			{
+				if (!AssimpImporterEx::LoadFBX_PNTT_AndMaterials(fbx, outCpu, /*flipUV*/true, /*leftHanded*/true))
+					throw std::runtime_error("FBX load failed");
+
+				if (!mesh.Build(m_pDevice, outCpu))
+					throw std::runtime_error("Mesh build failed");
+
+				mtls.resize(outCpu.materials.size());
+				for (size_t i = 0; i < outCpu.materials.size(); ++i)
+					mtls[i].Build(m_pDevice, outCpu.materials[i], texDir);
+			};
+		//================================================================================
+
 		auto BuildAll = [&](const std::wstring& fbx, const std::wstring& texDir,
 			StaticMesh& mesh, std::vector<MaterialGPU>& mtls)
 			{
@@ -528,6 +545,27 @@ bool TutorialApp::InitScene()
 		BuildAll(L"../Resource/BoxHuman/BoxHuman.fbx", L"../Resource/BoxHuman/", gBoxHuman, gBoxMtls);
 		BuildAll(L"../Resource/FBX/char.fbx", L"../Resource/FBX/", gFemale, gFemaleMtls);
 
+		// === [ADD] Drop FBX 4개 로드 =================================================
+		MeshData_PNTT dropCPU[kDropCount];
+
+		struct DropPath { const wchar_t* fbx; const wchar_t* dir; };
+		static const DropPath kDropPath[kDropCount] =
+		{
+			{ L"../Resource/FBX/IcoSphere.fbx", L"../Resource/FBX/" },
+			{ L"../Resource/FBX/sphere.fbx",    L"../Resource/FBX/" },
+			{ L"../Resource/FBX/box.fbx",       L"../Resource/FBX/" },
+			{ L"../Resource/v/Torus.fbx",     L"../Resource/FBX/" },
+		};
+
+		for (int i = 0; i < kDropCount; ++i)
+		{
+			BuildAllKeepCPU(kDropPath[i].fbx, kDropPath[i].dir, mDropMesh[i], mDropMtls[i], dropCPU[i]);
+			mDropWorld[i] = Matrix::Identity;
+		}
+		// ============================================================================
+
+
+
 		mBoxRig = RigidSkeletal::LoadFromFBX(
 			m_pDevice,
 			L"../Resource/BoxHuman/BoxHuman.fbx",
@@ -540,7 +578,157 @@ bool TutorialApp::InitScene()
 
 		if (mSkinRig && m_pBoneCB)
 			mSkinRig->WarmupBoneCB(m_pDeviceContext, m_pBoneCB);
+		// === [ADD] PhysX World + Drop Bodies =========================================
+		{
+			// 1) PhysX context/world
+			PhysXContextDesc cdesc{};
+			cdesc.enablePvd = false;         // 필요하면 true
+			cdesc.dispatcherThreads = 2;
+			cdesc.enableCooking = true;      // Torus convex 때문에 필요
+
+			mPxCtx = std::make_unique<PhysXContext>(cdesc);
+
+			PhysXWorld::Desc wdesc{};
+			wdesc.gravity = { 0.0f, -9.81f, 0.0f };
+			wdesc.enableSceneLocks = false;
+			wdesc.enableActiveTransforms = false;
+			wdesc.enableContactEvents = false;
+			wdesc.enableCCD = false;
+
+			mPxWorld = std::make_unique<PhysXWorld>(*mPxCtx, wdesc);
+
+			// 2) Floor (grid 높이에 맞춰 깔기)
+			BoxColliderDesc floor{};
+			floor.halfExtents = { 2500.0f, 20.0f, 2500.0f };
+			floor.staticFriction = 0.9f;
+			floor.dynamicFriction = 0.8f;
+			floor.restitution = 0.05f;
+
+			const float floorTopY = mGridY; // grid 선이 있는 Y
+			const Vec3 floorPos = { 0.0f, floorTopY - floor.halfExtents.y, 0.0f };
+			mPxFloor = mPxWorld->CreateStaticBox(floorPos, Quat::Identity, floor);
+
+			// 3) Bounds 계산 유틸		
+			auto GetPos = [](const auto& v) -> Vec3
+				{
+					return Vec3(v.px, v.py, v.pz);
+				};
+
+			auto ComputeAabb = [&](const MeshData_PNTT& cpu, Vec3& outMin, Vec3& outMax)
+				{
+					outMin = { +FLT_MAX, +FLT_MAX, +FLT_MAX };
+					outMax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+
+					for (const auto& v : cpu.vertices)
+					{
+						const auto p = GetPos(v);
+						outMin.x = min(outMin.x, p.x); outMin.y = min(outMin.y, p.y); outMin.z = min(outMin.z, p.z);
+						outMax.x = max(outMax.x, p.x); outMax.y = max(outMax.y, p.y); outMax.z = max(outMax.z, p.z);
+					}
+				};
+
+			auto ComputeSphereRadius = [&](const MeshData_PNTT& cpu, const Vec3& center) -> float
+				{
+					float r = 0.0f;
+					for (const auto& v : cpu.vertices)
+					{
+						const auto p = GetPos(v);
+						const float d = (p - center).Length();
+						r = max(r, d);
+					}
+					return max(r, 0.001f);
+				};
+
+			// 4) Spawn
+			const float spawnY = mGridY + 450.0f; // grid 위로 적당히
+			const float spawnZ = 300.0f;
+			const float startX = -120.0f;
+			const float stepX = 80.0f;
+
+			RigidBodyDesc rb{};
+			rb.density = 1.0f;
+			rb.linearDamping = 0.02f;
+			rb.angularDamping = 0.05f;
+
+			// (0) IcoSphere -> Sphere collider
+			{
+				Vec3 mn, mx;
+				ComputeAabb(dropCPU[0], mn, mx);
+				const Vec3 center = (mn + mx) * 0.5f;
+				const float radius = ComputeSphereRadius(dropCPU[0], center);
+
+				SphereColliderDesc s{};
+				s.radius = radius;
+				s.staticFriction = 0.6f;
+				s.dynamicFriction = 0.5f;
+				s.restitution = 0.2f;
+
+				const Vec3 p = { startX + stepX * 0, spawnY, spawnZ };
+				mDropBody[0] = mPxWorld->CreateDynamicSphere(p, Quat::Identity, rb, s);
+			}
+
+			// (1) sphere -> Sphere collider
+			{
+				Vec3 mn, mx;
+				ComputeAabb(dropCPU[1], mn, mx);
+				const Vec3 center = (mn + mx) * 0.5f;
+				const float radius = ComputeSphereRadius(dropCPU[1], center);
+
+				SphereColliderDesc s{};
+				s.radius = radius;
+				s.staticFriction = 0.6f;
+				s.dynamicFriction = 0.5f;
+				s.restitution = 0.2f;
+
+				const Vec3 p = { startX + stepX * 1, spawnY + 40.0f, spawnZ };
+				mDropBody[1] = mPxWorld->CreateDynamicSphere(p, Quat::Identity, rb, s);
+			}
+
+			// (2) box -> Box collider
+			{
+				Vec3 mn, mx;
+				ComputeAabb(dropCPU[2], mn, mx);
+				const Vec3 half = (mx - mn) * 0.5f;
+
+				BoxColliderDesc b{};
+				b.halfExtents = half;
+				b.staticFriction = 0.7f;
+				b.dynamicFriction = 0.6f;
+				b.restitution = 0.1f;
+
+				const Vec3 p = { startX + stepX * 2, spawnY + 80.0f, spawnZ };
+				mDropBody[2] = mPxWorld->CreateDynamicBox(p, Quat::Identity, rb, b);
+			}
+
+			// (3) Torus -> Dynamic Convex Mesh (Hull)
+			{
+				// vertex cloud
+				std::vector<Vec3> verts;
+				verts.reserve(dropCPU[3].vertices.size());
+				for (const auto& v : dropCPU[3].vertices) verts.push_back(GetPos(v));
+
+				ConvexMeshColliderDesc c{};
+				c.vertices = verts.data();
+				c.vertexCount = (uint32_t)verts.size();
+				c.shiftVertices = true; // 입력이 완벽히 센터가 아니어도 좀 더 안정적
+				c.vertexLimit = 255;
+				c.staticFriction = 0.6f;
+				c.dynamicFriction = 0.5f;
+				c.restitution = 0.1f;
+
+				const Vec3 p = { startX + stepX * 3, spawnY + 120.0f, spawnZ };
+				mDropBody[3] = mPxWorld->CreateDynamicConvexMesh(p, Quat::Identity, rb, c);
+			}
+
+			// 초기 렌더 트랜스폼 동기화
+			SyncDropFromPhysics();
+		}
+		// ============================================================================
+
+
 	}
+
+
 
 	// =========================================================================
 	// 8) Rasterizer / Depth / Blend states
@@ -750,6 +938,52 @@ bool TutorialApp::InitScene()
 		bd.ByteWidth = sizeof(CB_Proc);
 		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, mCB_Proc.GetAddressOf()));
 	}
+
+	// =========================================================================
+	// Physics: create ground + test rigidbody
+	// =========================================================================
+	if (mPxWorld)
+	{
+		// 1) Ground plane (grid Y에 맞춰서 내림)
+		{
+			FilterDesc f{};
+			f.layerBits = 1u << 0;
+			f.collideMask = 0xFFFFFFFFu;
+			f.queryMask = 0xFFFFFFFFu;
+
+			mPhysGround = mPxWorld->CreateStaticPlaneActor(0.6f, 0.6f, 0.0f, f);
+
+			if (mPhysGround)
+			{
+				const Quat keepRot = mPhysGround->GetRotation();
+				mPhysGround->SetTransform({ 0.0f, mGridY, 0.0f }, keepRot);
+			}
+		}
+
+		// 2) Dynamic box: mBoxX를 물리로 구동 (userData = &mBoxX)
+		{
+			mCharX.enabled = true;   // 보여주기용 (기존 코드에서 false였음)
+			mCharX.useQuat = true;
+
+			RigidBodyDesc rb{};
+			rb.density = 1.0f;
+			rb.userData = &mCharX;        // ★ DrainActiveTransforms에서 이 포인터로 XformUI를 찾음
+			rb.gravityEnabled = true;
+
+			BoxColliderDesc box{};
+			box.halfExtents = { 25.0f, 25.0f, 25.0f }; // 크기 너무 작/크면 여기만 조절
+			box.staticFriction = 0.6f;
+			box.dynamicFriction = 0.6f;
+			box.restitution = 0.1f;
+
+			mPhysTestBody = mPxWorld->CreateDynamicBox(
+				{ mCharX.pos.x, mCharX.pos.y, mCharX.pos.z },
+				Quat::Identity,
+				rb,
+				box);
+		}
+	}
+
 
 	return true;
 }
@@ -1077,6 +1311,16 @@ void TutorialApp::UninitScene()
 	SAFE_RELEASE(m_pNoCullRS);
 	SAFE_RELEASE(m_pSamplerLinear);
 	SAFE_RELEASE(m_pBlinnCB);
+
+	// === [ADD] PhysX cleanup =====================================================
+	for (int i = 0; i < kDropCount; ++i)
+		mDropBody[i].reset();
+
+	mPxFloor.reset();
+	mPxWorld.reset();
+	mPxCtx.reset();
+	// ============================================================================
+
 
 	// ------------------------------------------------------------------------
 	// Skybox

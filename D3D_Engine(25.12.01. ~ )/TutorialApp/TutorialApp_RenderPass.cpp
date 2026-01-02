@@ -106,6 +106,15 @@ void TutorialApp::RenderShadowPass_Main(ID3D11DeviceContext* ctx, ConstantBuffer
 	DrawShadowStatic(mZeldaX, gZelda, gZeldaMtls);
 	DrawShadowStatic(mFemaleX, gFemale, gFemaleMtls);
 
+	// === [ADD] Drop meshes (shadow) ==============================================
+	for (int i = 0; i < kDropCount; ++i)
+	{
+		// opaque only로 처리 (alpha-cut 필요하면 mat.hasOpacity 검사 로직 추가)
+		DrawDepth_Static(mDropMesh[i], mDropMtls[i], mDropWorld[i], false);
+	}
+	// ============================================================================
+
+
 	// --- Rigid Skeletal ---
 	if (mBoxRig && mBoxX.enabled)
 	{
@@ -451,6 +460,13 @@ void TutorialApp::RenderGBufferPass(ID3D11DeviceContext* ctx, ConstantBuffer& ba
 		if (mCharX.enabled)   DrawStaticOpaqueOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
 		if (mZeldaX.enabled)  DrawStaticOpaqueOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
 		if (mFemaleX.enabled) DrawStaticOpaqueOnly(ctx, gFemale, gFemaleMtls, ComposeSRT(mFemaleX), baseCB);
+		// === [ADD] Drop meshes (deferred) ============================================
+		for (int i = 0; i < kDropCount; ++i)
+		{
+			DrawStaticOpaqueOnly(ctx, mDropMesh[i], mDropMtls[i], mDropWorld[i], baseCB);
+		}
+		// ============================================================================
+
 	}
 
 	if (mDbg.forceAlphaClip && mDbg.showTransparent)
@@ -747,6 +763,14 @@ void TutorialApp::RenderOpaquePass(ID3D11DeviceContext* ctx, ConstantBuffer& bas
 	if (mTreeX.enabled)  DrawStaticOpaqueOnly(ctx, gTree, gTreeMtls, ComposeSRT(mTreeX), baseCB);
 	if (mCharX.enabled)  DrawStaticOpaqueOnly(ctx, gChar, gCharMtls, ComposeSRT(mCharX), baseCB);
 	if (mZeldaX.enabled) DrawStaticOpaqueOnly(ctx, gZelda, gZeldaMtls, ComposeSRT(mZeldaX), baseCB);
+
+	// === [ADD] Drop meshes (forward) =============================================
+	for (int i = 0; i < kDropCount; ++i)
+	{
+		DrawStaticOpaqueOnly(ctx, mDropMesh[i], mDropMtls[i], mDropWorld[i], baseCB);
+	}
+	// ============================================================================
+
 
 	// 여자 모델: PBR 토글에 따라 PS 교체
 	if (mFemaleX.enabled)
