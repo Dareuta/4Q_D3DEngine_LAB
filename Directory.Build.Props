@@ -5,7 +5,7 @@
 		<!-- C:\Users\A\Documents\GitHub\vcpkg -->
 		<!-- C:\Users\User\Documents\GitHub\vcpkg -->
 		<VcpkgRoot>C:\Users\A\Documents\GitHub\vcpkg</VcpkgRoot>
-		
+
 		<TripletStatic>x64-windows-static-md</TripletStatic>
 		<TripletDynamic>x64-windows</TripletDynamic>
 	</PropertyGroup>
@@ -52,13 +52,20 @@
 		<!-- Assimp DLL 자동 복사 (Debug) -->
 		<PostBuildEvent>
 			<Command>
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\assimp-vc143-mtd.dll"	"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysX*.dll"				"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\poly2tri.dll"			"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\minizip.dll"			"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\zlibd1.dll"				"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\kubazip.dll"			"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\pugixml.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\assimp-vc143-mtd.dll"						"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysXFoundation_64.lib;"					"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysXCommon_64.lib;"						"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysX_64.lib;"								"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysXCooking_64.lib;"						"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysXExtensions_static_64.lib;"				"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysXCharacterKinematic_static_64.lib;"		"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysXPvdSDK_static_64.lib;"					"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\PhysXTask_static_64.lib;"					"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\poly2tri.dll"								"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\minizip.dll"								"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\zlibd1.dll"									"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\kubazip.dll"								"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\debug\bin\pugixml.dll"								"$(OutDir)" 2&gt;nul
 
 			</Command>
 		</PostBuildEvent>
@@ -93,15 +100,22 @@
 		<!-- Assimp DLL 자동 복사 (Release) -->
 		<PostBuildEvent>
 			<Command>
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\assimp-vc143-mt.dll"	"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysX*.dll"			"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\poly2tri.dll"			"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\minizip.dll"			"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\kubazip.dll"			"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\pugixml.dll"			"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\draco.dll"			"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\zlib1.dll"			"$(OutDir)" 2&gt;nul
-				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\zlibd1.dll"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\assimp-vc143-mt.dll"						"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysXFoundation_64.lib;"					"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysXCommon_64.lib;"						"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysX_64.lib;"							"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysXCooking_64.lib;"						"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysXExtensions_static_64.lib;"			"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysXCharacterKinematic_static_64.lib;"	"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysXPvdSDK_static_64.lib;"				"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\PhysXTask_static_64.lib;"					"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\poly2tri.dll"								"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\minizip.dll"								"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\kubazip.dll"								"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\pugixml.dll"								"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\draco.dll"								"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\zlib1.dll"								"$(OutDir)" 2&gt;nul
+				xcopy /Y /D "$(VcpkgRoot)\installed\$(TripletDynamic)\bin\zlibd1.dll"								"$(OutDir)" 2&gt;nul
 			</Command>
 		</PostBuildEvent>
 	</ItemDefinitionGroup>
