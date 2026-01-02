@@ -1,9 +1,9 @@
-/**
+ï»¿/**
 	@file      TimeSystem.h
 	@brief     Thanks Frank Luna, this class is based on his code.
 	@author    SKYFISH
 	@date      JUNE.2023
-	@notice    ¹°¹æ¿ï Ã¥ÀÇ ÄÚµåÀÌ¸ç ³×ÀÌ¹Ö ÀÏ°ü¼º ¶§¹®¿¡ ÆÄÀÏ¸í¸¸ º¯°æ			
+	@notice    ë¬¼ë°©ìš¸ ì±…ì˜ ì½”ë“œì´ë©° ë„¤ì´ë° ì¼ê´€ì„± ë•Œë¬¸ì— íŒŒì¼ëª…ë§Œ ë³€ê²½			
 **/
 
 #pragma once

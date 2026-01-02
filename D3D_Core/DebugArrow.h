@@ -1,4 +1,4 @@
-// ===== DebugArrow.h =====
+ï»¿// ===== DebugArrow.h =====
 #pragma once
 #include "Helper.h"
 #include <d3d11.h>
@@ -22,7 +22,7 @@ inline bool DebugArrow_Init(ID3D11Device* dev, DebugArrow& A)
 {
     using namespace DirectX::SimpleMath;
 
-    // 1) ¼ÎÀÌ´õ + IL
+    // 1) ì…°ì´ë” + IL
     ID3D10Blob* vsb = nullptr; ID3D10Blob* psb = nullptr;
     HR_T(CompileShaderFromFile(L"../Resource/DebugColor_VS.hlsl", "main", "vs_5_0", &vsb));
     HR_T(CompileShaderFromFile(L"../Resource/DebugColor_PS.hlsl", "main", "ps_5_0", &psb));
@@ -36,7 +36,7 @@ inline bool DebugArrow_Init(ID3D11Device* dev, DebugArrow& A)
     HR_T(dev->CreateInputLayout(ild, _countof(ild), vsb->GetBufferPointer(), vsb->GetBufferSize(), &A.il));
     SAFE_RELEASE(vsb); SAFE_RELEASE(psb);
 
-    // 2) Áö¿À¸ŞÆ®¸®(+Z È­»ìÇ¥): µÎÅùÇÑ ¹Ú½º »şÇÁÆ® + ÇÇ¶ó¹Ô Çìµå
+    // 2) ì§€ì˜¤ë©”íŠ¸ë¦¬(+Z í™”ì‚´í‘œ): ë‘íˆ¼í•œ ë°•ìŠ¤ ìƒ¤í”„íŠ¸ + í”¼ë¼ë°‹ í—¤ë“œ
     struct V { DirectX::XMFLOAT3 p; DirectX::XMFLOAT4 c; };
     const float halfT = 6.0f, shaftLen = 120.0f, headLen = 30.0f, headHalf = 10.0f;
     const DirectX::XMFLOAT4 Y = { 1.0f,0.9f,0.1f,1.0f };
@@ -51,7 +51,7 @@ inline bool DebugArrow_Init(ID3D11Device* dev, DebugArrow& A)
     };
 
     uint16_t idx[] = {
-        // shaft 6¸é
+        // shaft 6ë©´
         s0,s2,s1, s0,s3,s2,
         s0,s1,s5, s0,s5,s4,
         s1,s2,s6, s1,s6,s5,
@@ -80,19 +80,19 @@ inline bool DebugArrow_Init(ID3D11Device* dev, DebugArrow& A)
         cbd0.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         cbd0.Usage = D3D11_USAGE_DEFAULT;
 
-        // VS¿¡¼­ W, V, P (3°³)¸¸ ½áµµ µÇÁö¸¸, 16¹ÙÀÌÆ® Á¤·Ä ¿©À¯ °âÇØ¼­ 4°³·Î ÆĞµù
+        // VSì—ì„œ W, V, P (3ê°œ)ë§Œ ì¨ë„ ë˜ì§€ë§Œ, 16ë°”ì´íŠ¸ ì •ë ¬ ì—¬ìœ  ê²¸í•´ì„œ 4ê°œë¡œ íŒ¨ë”©
         cbd0.ByteWidth = sizeof(DirectX::XMFLOAT4X4) * 4; // 64 * 4 = 256
 
         HR_T(dev->CreateBuffer(&cbd0, nullptr, &A.cbWVP));
     }
 
-    // 3) Color »ó¼ö¹öÆÛ(b3)
+    // 3) Color ìƒìˆ˜ë²„í¼(b3)
     D3D11_BUFFER_DESC cbdC{};
     cbdC.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     cbdC.Usage = D3D11_USAGE_DEFAULT;
     cbdC.ByteWidth = 16;
 
-    // ÃÊ±â µ¥ÀÌÅÍ = ±âº» ³ë¶û
+    // ì´ˆê¸° ë°ì´í„° = ê¸°ë³¸ ë…¸ë‘
     D3D11_SUBRESOURCE_DATA iC{};
     iC.pSysMem = &kArrowYellow;
 
@@ -114,7 +114,7 @@ inline void DebugArrow_Draw(
 {
     using namespace DirectX::SimpleMath;
 
-    // --- »óÅÂ ¹é¾÷ ---
+    // --- ìƒíƒœ ë°±ì—… ---
     ID3D11RasterizerState* oldRS = nullptr;   ctx->RSGetState(&oldRS);
     ID3D11InputLayout* oldIL = nullptr;       ctx->IAGetInputLayout(&oldIL);
     ID3D11VertexShader* oldVS = nullptr;      ctx->VSGetShader(&oldVS, nullptr, 0);
@@ -131,7 +131,7 @@ inline void DebugArrow_Draw(
     
     ctx->UpdateSubresource(A.cbColor, 0, nullptr, &color, 0, 0);
 
-    // --- ÆÄÀÌÇÁ¶óÀÎ ¹ÙÀÎµå ---
+    // --- íŒŒì´í”„ë¼ì¸ ë°”ì¸ë“œ ---
     UINT stride = sizeof(DirectX::XMFLOAT3) + sizeof(DirectX::XMFLOAT4), offset = 0;
     ctx->IASetInputLayout(A.il);
     ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -140,19 +140,19 @@ inline void DebugArrow_Draw(
 
     if (A.rsNone) ctx->RSSetState(A.rsNone);
 
-    // ºÒÅõ¸í, ±íÀÌ ON ±ÇÀå (¿øÇÏ¸é º¯°æ)
+    // ë¶ˆíˆ¬ëª…, ê¹Šì´ ON ê¶Œì¥ (ì›í•˜ë©´ ë³€ê²½)
     float bf[4] = { 0,0,0,0 };
     ctx->OMSetBlendState(nullptr, bf, 0xFFFFFFFF);
 
     ctx->VSSetShader(A.vs, nullptr, 0);
     ctx->PSSetShader(A.ps, nullptr, 0);
     ctx->VSSetConstantBuffers(0, 1, &A.cbWVP);
-    ctx->PSSetConstantBuffers(3, 1, &A.cbColor); // ¡Ú b3
+    ctx->PSSetConstantBuffers(3, 1, &A.cbColor); // â˜… b3
 
     // Draw
     ctx->DrawIndexed(A.indexCount, 0, 0);
 
-    // --- º¹¿ø ---
+    // --- ë³µì› ---
     ctx->VSSetShader(oldVS, nullptr, 0);
     ctx->PSSetShader(oldPS, nullptr, 0);
     ctx->IASetInputLayout(oldIL);
@@ -171,12 +171,12 @@ inline void DebugArrow_Release(DebugArrow& A)
     A.indexCount = 0;
 }
 
-// ===== µµ¿ò ÇÔ¼ö: ¹æÇâ º¤ÅÍ·Î World ±¸¼º(+Z Á¤·Ä) =====
+// ===== ë„ì›€ í•¨ìˆ˜: ë°©í–¥ ë²¡í„°ë¡œ World êµ¬ì„±(+Z ì •ë ¬) =====
 inline DirectX::SimpleMath::Matrix MakeWorldFromDir(
     const DirectX::SimpleMath::Vector3& pos,
-    const DirectX::SimpleMath::Vector3& dir,   // º¸°í ½ÍÀº ¹æÇâ(Á¤±ÔÈ­ ±ÇÀå)
+    const DirectX::SimpleMath::Vector3& dir,   // ë³´ê³  ì‹¶ì€ ë°©í–¥(ì •ê·œí™” ê¶Œì¥)
     const DirectX::SimpleMath::Vector3& up,
-    const DirectX::SimpleMath::Vector3& scale) // È­»ìÇ¥ Å©±â
+    const DirectX::SimpleMath::Vector3& scale) // í™”ì‚´í‘œ í¬ê¸°
 {
     using namespace DirectX::SimpleMath;
     Vector3 d = dir; d.Normalize();
