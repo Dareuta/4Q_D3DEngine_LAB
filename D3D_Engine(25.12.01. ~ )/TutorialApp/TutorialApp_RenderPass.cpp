@@ -338,6 +338,22 @@ void TutorialApp::RenderPointShadowPass_Cube(ID3D11DeviceContext* ctx, ConstantB
 		DrawPointShadowStatic(mZeldaX, gZelda, gZeldaMtls, V);
 		DrawPointShadowStatic(mFemaleX, gFemale, gFemaleMtls, V);
 
+
+		// --- Drop meshes (casters for point shadow) ---
+		if (mDbg.showOpaque)
+		{
+			for (int i = 0; i < kDropCount; ++i)
+				DrawPointDepth_Static(mDropMesh[i], mDropMtls[i], mDropWorld[i], V, false);
+		}
+
+		// alpha-cut(투명 텍스처로 clip 쓰는 애들)도 원하면
+		if (mDbg.showTransparent)
+		{
+			for (int i = 0; i < kDropCount; ++i)
+				DrawPointDepth_Static(mDropMesh[i], mDropMtls[i], mDropWorld[i], V, true);
+		}
+
+
 		// Rigid
 		if (mBoxRig && mBoxX.enabled)
 		{

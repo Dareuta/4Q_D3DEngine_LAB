@@ -426,16 +426,15 @@ private:
 		float toonShadowMin = 0.02f;
 
 		bool useDeferred = true;
-
-		bool showDeferredUI = true;
-		bool showGBuffer = true;
+				
+		bool showGBuffer = false;
 
 		bool showGBufferFS = false;
 		int   gbufferMode = 0;
 		float gbufferPosRange = 200.0f;
 
-		bool showShadowWindow = true;
-		bool showLightWindow = true;
+		bool showShadowWindow = false;
+		bool showLightWindow = false;
 
 		bool dirLightEnable = true; // vLightColor.w
 
@@ -545,14 +544,51 @@ private:
 	StaticMesh                 mDropMesh[kDropCount];
 	std::vector<MaterialGPU>   mDropMtls[kDropCount];
 	Matrix                     mDropWorld[kDropCount];
-		
+
 	std::unique_ptr<IRigidBody>     mDropBody[kDropCount];
 
 	int   mPhysMaxSubSteps = 8;
 	bool  mPhysEnable = true;
 
-	void TickPhysicsDrop(float dt);
 	void SyncDropFromPhysics();
+
+	// === [ADD] Physics ImGui Controls =======================================
+	// Drop bodies initial pose (for reset)
+	Vec3 mDropInitPos[kDropCount]{};
+	Quat mDropInitRot[kDropCount]{};
+
+	// Simulation control (ImGui)
+	bool mPhysPaused = false;
+	bool mPhysStepOnce = false;      // when paused
+
+	// Selection / editing
+	int  mPhysSelDrop = 0;
+	Vec3 mPhysTeleportPos = Vec3::Zero;
+	Vec3 mPhysTeleportRotD = Vec3::Zero; // degrees (pitch=x, yaw=y, roll=z)
+	float mPhysNudgeStep = 10.0f;
+
+	bool mPhysZeroVelOnMove = true;
+	bool mPhysWakeOnMove = true;
+
+	// Forces
+	Vec3  mPhysImpulse = Vec3(0, 300.0f, 0);
+	Vec3  mPhysTorque = Vec3(0, 0, 50.0f);
+	bool  mPhysUseTorque = false;
+
+	// Material quick override
+	float mPhysMatStaticFriction = 0.6f;
+	float mPhysMatDynamicFriction = 0.5f;
+	float mPhysMatRestitution = 0.1f;
+
+	// World gravity UI
+	Vec3  mPhysWorldGravity = Vec3(0, -9.81f, 0);
+
+	// Helpers
+	IRigidBody* GetSelectedDrop();
+	void TeleportDropBody(int idx, const Vec3& p, const Quat& q, bool resetVel, bool wake);
+	void ResetDropBody(int idx, bool resetVel = true);
+	void ResetDropBodies(bool resetVel = true);
+	void NudgeSelectedDrop(const Vec3& delta);
 
 	// =========================================================================
 

@@ -560,11 +560,9 @@ bool TutorialApp::InitScene()
 		for (int i = 0; i < kDropCount; ++i)
 		{
 			BuildAllKeepCPU(kDropPath[i].fbx, kDropPath[i].dir, mDropMesh[i], mDropMtls[i], dropCPU[i]);
-			mDropWorld[i] = Matrix::Identity;
+			mDropWorld[i] = Matrix::Identity;			
 		}
 		// ============================================================================
-
-
 
 		mBoxRig = RigidSkeletal::LoadFromFBX(
 			m_pDevice,
@@ -580,23 +578,6 @@ bool TutorialApp::InitScene()
 			mSkinRig->WarmupBoneCB(m_pDeviceContext, m_pBoneCB);
 		// === [ADD] PhysX World + Drop Bodies =========================================
 		{
-			// 1) PhysX context/world
-			PhysXContextDesc cdesc{};
-			cdesc.enablePvd = false;         // 필요하면 true
-			cdesc.dispatcherThreads = 2;
-			cdesc.enableCooking = true;      // Torus convex 때문에 필요
-
-			mPxCtx = std::make_unique<PhysXContext>(cdesc);
-
-			PhysXWorld::Desc wdesc{};
-			wdesc.gravity = { 0.0f, -9.81f, 0.0f };
-			wdesc.enableSceneLocks = false;
-			wdesc.enableActiveTransforms = false;
-			wdesc.enableContactEvents = false;
-			wdesc.enableCCD = false;
-
-			mPxWorld = std::make_unique<PhysXWorld>(*mPxCtx, wdesc);
-
 			// 2) Floor (grid 높이에 맞춰 깔기)
 			BoxColliderDesc floor{};
 			floor.halfExtents = { 2500.0f, 20.0f, 2500.0f };
@@ -640,10 +621,10 @@ bool TutorialApp::InitScene()
 				};
 
 			// 4) Spawn
-			const float spawnY = mGridY + 450.0f; // grid 위로 적당히
+			const float spawnY = 500; // grid 위로 적당히
 			const float spawnZ = 300.0f;
 			const float startX = -120.0f;
-			const float stepX = 80.0f;
+			const float stepX = 150.0f;
 
 			RigidBodyDesc rb{};
 			rb.density = 1.0f;
@@ -720,8 +701,25 @@ bool TutorialApp::InitScene()
 				mDropBody[3] = mPxWorld->CreateDynamicConvexMesh(p, Quat::Identity, rb, c);
 			}
 
-			// 초기 렌더 트랜스폼 동기화
+			// --- [ADD] capture initial pose for reset/UI ---
+			for (int i = 0; i < kDropCount; ++i)
+			{
+				if (!mDropBody[i]) continue;
+				mDropInitPos[i] = mDropBody[i]->GetPosition();
+				mDropInitRot[i] = mDropBody[i]->GetRotation();
+			}
+
+			// Init UI fields
+			mPhysSelDrop = 0;
+			if (mDropBody[0])
+			{
+				mPhysTeleportPos = mDropInitPos[0];
+				mPhysTeleportRotD = Vec3::Zero;
+			}
+			if (mPxWorld) mPhysWorldGravity = mPxWorld->GetGravity();
+
 			SyncDropFromPhysics();
+
 		}
 		// ============================================================================
 
@@ -1315,7 +1313,7 @@ void TutorialApp::UninitScene()
 	// === [ADD] PhysX cleanup =====================================================
 	for (int i = 0; i < kDropCount; ++i)
 		mDropBody[i].reset();
-		
+
 	mPxWorld.reset();
 	mPxCtx.reset();
 	// ============================================================================

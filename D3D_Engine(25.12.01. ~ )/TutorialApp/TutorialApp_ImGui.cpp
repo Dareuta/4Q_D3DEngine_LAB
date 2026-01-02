@@ -163,9 +163,180 @@ void TutorialApp::UpdateImGUI()
 	// ========================================================================
 	// Main Window (Left)
 	// ========================================================================
+	ImGui::SetNextWindowSize(ImVec2(500, 1080), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowPos(ImVec2(1420, 0), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("물리(PhysX)"), ImGuiTreeNodeFlags_DefaultOpen)
+	{
+		// --------------------------------------------------------------------
+		// Physics (PhysX)
+		// --------------------------------------------------------------------
+
+		ImGui::Checkbox("Enable (시뮬레이션)", &mPhysEnable);
+		ImGui::SameLine();
+
+		bool pausedBefore = mPhysPaused;
+		ImGui::Checkbox("Pause (물리만)", &mPhysPaused);
+		if (pausedBefore != mPhysPaused)
+			mPhysAccum = 0.0f;
+
+		ImGui::SameLine();
+		if (ImGui::Button("Step 1 tick"))
+			mPhysStepOnce = true;
+
+		ImGui::TextDisabled("Tip: Freeze Time은 애니메이션까지 멈춤. Pause는 물리만 멈춤.");
+
+		ImGui::Separator();
+
+		// World gravity
+		if (mPxWorld)
+		{
+			Vec3 g = mPhysWorldGravity;
+			if (ImGui::DragFloat3("World Gravity", (float*)&g, 0.1f, -5000.0f, 5000.0f, "%.3f"))
+			{
+				mPhysWorldGravity = g;
+				mPxWorld->SetGravity(mPhysWorldGravity);
+			}
+
+			ImGui::Text("FixedDt: %.4f  MaxSubSteps: %d  Accum: %.4f", mPhysFixedDt, mPhysMaxSubSteps, mPhysAccum);
+			ImGui::Text("Moved: %d  Events: %d", (int)mPhysMoved.size(), (int)mPhysEvents.size());
+		}
+
+		ImGui::Separator();
+
+		// Selection
+		const char* names[kDropCount] = { "IcoSphere", "Sphere", "Box", "Torus" };
+		int sel = std::clamp(mPhysSelDrop, 0, kDropCount - 1);
+		if (ImGui::Combo("선택(Selected)", &sel, names, kDropCount))
+		{
+			mPhysSelDrop = sel;
+			if (IRigidBody* b = GetSelectedDrop())
+			{
+				mPhysTeleportPos = b->GetPosition();
+				mPhysTeleportRotD = Vec3::Zero;
+			}
+		}
+
+		// Quick actions
+		if (ImGui::Button("Reset All (처음 위치)"))
+			ResetDropBodies(true);
+		ImGui::SameLine();
+		if (ImGui::Button("Reset Selected"))
+			ResetDropBody(mPhysSelDrop, true);
+
+		IRigidBody* b = GetSelectedDrop();
+		if (b)
+		{
+			ImGui::SeparatorText("Selected Body");
+
+			const Vec3 p = b->GetPosition();
+			const Vec3 lv = b->GetLinearVelocity();
+			const Vec3 av = b->GetAngularVelocity();
+			ImGui::Text("Pos: (%.2f, %.2f, %.2f)", p.x, p.y, p.z);
+			ImGui::Text("LinVel: (%.2f, %.2f, %.2f)", lv.x, lv.y, lv.z);
+			ImGui::Text("AngVel: (%.2f, %.2f, %.2f)", av.x, av.y, av.z);
+			ImGui::Text("Awake: %s", b->IsAwake() ? "YES" : "NO");
+
+			bool kin = b->IsKinematic();
+			if (ImGui::Checkbox("Kinematic", &kin)) b->SetKinematic(kin);
+			ImGui::SameLine();
+			bool grav = b->IsGravityEnabled();
+			if (ImGui::Checkbox("Gravity", &grav)) b->SetGravityEnabled(grav);
+
+			bool col = b->IsCollisionEnabled();
+			if (ImGui::Checkbox("Collision", &col)) b->SetCollisionEnabled(col);
+			ImGui::SameLine();
+			bool qry = b->IsQueryEnabled();
+			if (ImGui::Checkbox("Query", &qry)) b->SetQueryEnabled(qry);
+
+			ImGui::SameLine();
+			if (ImGui::Button("Wake")) b->WakeUp();
+			ImGui::SameLine();
+			if (ImGui::Button("Sleep")) b->PutToSleep();
+
+			ImGui::SeparatorText("Move / Teleport");
+			ImGui::Checkbox("ZeroVel on Move", &mPhysZeroVelOnMove);
+			ImGui::SameLine();
+			ImGui::Checkbox("Wake on Move", &mPhysWakeOnMove);
+
+			ImGui::DragFloat3("Teleport Pos", (float*)&mPhysTeleportPos, 1.0f, -10000.0f, 10000.0f, "%.2f");
+			ImGui::DragFloat3("Teleport Rot (deg XYZ)", (float*)&mPhysTeleportRotD, 1.0f, -720.0f, 720.0f, "%.1f");
+
+			if (ImGui::Button("Apply Teleport"))
+			{
+				using namespace DirectX;
+				const float pitch = XMConvertToRadians(mPhysTeleportRotD.x);
+				const float yaw = XMConvertToRadians(mPhysTeleportRotD.y);
+				const float roll = XMConvertToRadians(mPhysTeleportRotD.z);
+				const Quat q = Quat::CreateFromYawPitchRoll(yaw, pitch, roll);
+
+				TeleportDropBody(mPhysSelDrop, mPhysTeleportPos, q, mPhysZeroVelOnMove, mPhysWakeOnMove);
+				SyncDropFromPhysics();
+			}
+
+			ImGui::DragFloat("Nudge Step", &mPhysNudgeStep, 0.1f, 0.01f, 1000.0f, "%.2f");
+			if (ImGui::Button("+X")) { NudgeSelectedDrop({ +mPhysNudgeStep, 0, 0 }); }
+			ImGui::SameLine();
+			if (ImGui::Button("-X")) { NudgeSelectedDrop({ -mPhysNudgeStep, 0, 0 }); }
+			ImGui::SameLine();
+			if (ImGui::Button("+Y")) { NudgeSelectedDrop({ 0, +mPhysNudgeStep, 0 }); }
+			ImGui::SameLine();
+			if (ImGui::Button("-Y")) { NudgeSelectedDrop({ 0, -mPhysNudgeStep, 0 }); }
+			if (ImGui::Button("+Z")) { NudgeSelectedDrop({ 0, 0, +mPhysNudgeStep }); }
+			ImGui::SameLine();
+			if (ImGui::Button("-Z")) { NudgeSelectedDrop({ 0, 0, -mPhysNudgeStep }); }
+
+			ImGui::SeparatorText("Forces");
+			ImGui::DragFloat3("Impulse", (float*)&mPhysImpulse, 1.0f, -50000.0f, 50000.0f, "%.1f");
+			ImGui::SameLine();
+			if (ImGui::Button("Apply Impulse")) { b->AddImpulse(mPhysImpulse); }
+
+			ImGui::Checkbox("Use Torque", &mPhysUseTorque);
+			if (mPhysUseTorque)
+			{
+				ImGui::DragFloat3("Torque", (float*)&mPhysTorque, 1.0f, -50000.0f, 50000.0f, "%.1f");
+				ImGui::SameLine();
+				if (ImGui::Button("Apply Torque")) { b->AddTorque(mPhysTorque); }
+			}
+
+			ImGui::SeparatorText("Material Quick Override");
+			ImGui::DragFloat("StaticFriction", &mPhysMatStaticFriction, 0.01f, 0.0f, 3.0f, "%.2f");
+			ImGui::DragFloat("DynamicFriction", &mPhysMatDynamicFriction, 0.01f, 0.0f, 3.0f, "%.2f");
+			ImGui::DragFloat("Restitution", &mPhysMatRestitution, 0.01f, 0.0f, 2.0f, "%.2f");
+			if (ImGui::Button("Apply Material to Selected"))
+			{
+				b->SetMaterial(mPhysMatStaticFriction, mPhysMatDynamicFriction, mPhysMatRestitution);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Apply Material to All"))
+			{
+				for (int i = 0; i < kDropCount; ++i)
+					if (mDropBody[i]) mDropBody[i]->SetMaterial(mPhysMatStaticFriction, mPhysMatDynamicFriction, mPhysMatRestitution);
+			}
+
+			ImGui::Separator();
+			if (ImGui::Button("폭발(Explode)"))
+			{
+				// 간단한 테스트: 4개에 서로 다른 방향 임펄스
+				static const Vec3 kImp[kDropCount] = {
+					{ -400.0f, 700.0f,  0.0f },
+					{ +400.0f, 700.0f,  0.0f },
+					{  0.0f,  700.0f, -400.0f },
+					{  0.0f,  700.0f, +400.0f },
+				};
+				for (int i = 0; i < kDropCount; ++i)
+					if (mDropBody[i]) mDropBody[i]->AddImpulse(kImp[i]);
+			}
+		}
+		else
+		{
+			ImGui::TextDisabled("Drop bodies not created yet.");
+		}
+	}
+	ImGui::End();
+
+
 	ImGui::SetNextWindowSize(ImVec2(370, 1080), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-
 	if (ImGui::Begin("임꾸꾸이"))
 	{
 		// Status

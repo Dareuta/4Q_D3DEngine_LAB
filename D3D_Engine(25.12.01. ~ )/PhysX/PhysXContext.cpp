@@ -27,6 +27,8 @@ struct PhysXContext::Impl
 			physics->release();
 		}
 
+		if (pvd) pvd->release();
+
 		if (pvdTransport)
 		{
 			// PxPvd::release() does NOT release transport.
@@ -34,7 +36,6 @@ struct PhysXContext::Impl
 			pvdTransport = nullptr;
 		}
 
-		if (pvd) pvd->release();
 		if (foundation) foundation->release();
 	}
 
