@@ -59,22 +59,19 @@
     <ClCompile Include="TutorialApp\TutorialApp_SceneInit.cpp">
       <Filter>WorkSpace\#App</Filter>
     </ClCompile>
-    <ClCompile Include="PhysX\PhysicsMath.h">
-      <Filter>WorkSpace\#PhysX</Filter>
-    </ClCompile>
-    <ClCompile Include="PhysX\IPhysicsWorld.h">
-      <Filter>WorkSpace\#PhysX</Filter>
-    </ClCompile>
-    <ClCompile Include="PhysX\PhysXContext.h">
-      <Filter>WorkSpace\#PhysX</Filter>
-    </ClCompile>
     <ClCompile Include="PhysX\PhysXContext.cpp">
       <Filter>WorkSpace\#PhysX</Filter>
     </ClCompile>
-    <ClCompile Include="PhysX\PhysXWorld.h">
+    <ClCompile Include="PhysX\PhysXWorld_Actors.cpp">
       <Filter>WorkSpace\#PhysX</Filter>
     </ClCompile>
-    <ClCompile Include="PhysX\PhysXWorld.cpp">
+    <ClCompile Include="PhysX\PhysXWorld_Core.cpp">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysX\PhysXWorld_Joints.cpp">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysX\PhysXWorld_Queries.cpp">
       <Filter>WorkSpace\#PhysX</Filter>
     </ClCompile>
   </ItemGroup>
@@ -105,6 +102,21 @@
     </ClInclude>
     <ClInclude Include="TutorialApp\TutorialApp.h">
       <Filter>WorkSpace\#App</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysX\PhysXWorld_Internal.h">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysX\IPhysicsWorld.h">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysX\PhysicsMath.h">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysX\PhysXContext.h">
+      <Filter>WorkSpace\#PhysX</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysX\PhysXWorld.h">
+      <Filter>WorkSpace\#PhysX</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

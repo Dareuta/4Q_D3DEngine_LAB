@@ -159,12 +159,15 @@ endlocal
   <ItemGroup>
     <ClCompile Include="AssimpImporterEX.cpp" />
     <ClCompile Include="Material.cpp" />
-    <ClCompile Include="PhysX\PhysicsMath.h" />
-    <ClCompile Include="PhysX\IPhysicsWorld.h" />
-    <ClCompile Include="PhysX\PhysXContext.h" />
+    <ClInclude Include="PhysX\PhysicsMath.h" />
+    <ClInclude Include="PhysX\IPhysicsWorld.h" />
+    <ClInclude Include="PhysX\PhysXContext.h" />
     <ClCompile Include="PhysX\PhysXContext.cpp" />
-    <ClCompile Include="PhysX\PhysXWorld.h" />
-    <ClCompile Include="PhysX\PhysXWorld.cpp" />
+    <ClInclude Include="PhysX\PhysXWorld.h" />
+    <ClCompile Include="PhysX\PhysXWorld_Actors.cpp" />
+    <ClCompile Include="PhysX\PhysXWorld_Core.cpp" />
+    <ClCompile Include="PhysX\PhysXWorld_Joints.cpp" />
+    <ClCompile Include="PhysX\PhysXWorld_Queries.cpp" />
     <ClCompile Include="RigidSkeletal.cpp" />
     <ClCompile Include="SkinnedMesh.cpp" />
     <ClCompile Include="SkinnedSkeletal.cpp" />
@@ -180,6 +183,7 @@ endlocal
     <ClInclude Include="AssimpImporterEX.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="MeshDataEx.h" />
+    <ClInclude Include="PhysX\PhysXWorld_Internal.h" />
     <ClInclude Include="RenderSharedCB.h" />
     <ClInclude Include="RigidSkeletal.h" />
     <ClInclude Include="SkinnedMesh.h" />
