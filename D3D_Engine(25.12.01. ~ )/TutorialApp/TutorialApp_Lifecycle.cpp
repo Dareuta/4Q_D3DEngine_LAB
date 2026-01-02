@@ -1,6 +1,10 @@
 ﻿// OnInitialize/OnUninitialize/OnUpdate/OnRender/WndProc
+
 #include "../../D3D_Core/pch.h"
 #include "TutorialApp.h"
+#ifdef _DEBUG
+#include "imgui.h"
+#endif
 
 bool TutorialApp::OnInitialize()
 {
@@ -98,6 +102,70 @@ void TutorialApp::OnUpdate()
 	static float tHold = 0.0f;
 	if (!mDbg.freezeTime) tHold = GameTimer::m_Instance->TotalTime();
 	const float t = tHold;
+
+
+
+	// =========================================================================
+// 0.25) Mouse pick + drag (kinematic target tool)
+// =========================================================================
+	if (mPxWorld && (mPhysMousePickEnable || mPhysDragging))
+	{
+		auto* input = InputSystem::Instance;
+		if (input)
+		{
+#ifdef _DEBUG
+			const bool uiWantsMouse = (ImGui::GetCurrentContext() != nullptr) && ImGui::GetIO().WantCaptureMouse;
+#else
+			const bool uiWantsMouse = false;
+#endif
+			using Tracker = DirectX::Mouse::ButtonStateTracker;
+
+			const bool lPressed = (input->m_MouseStateTracker.leftButton == Tracker::PRESSED);
+			const bool lReleased = (input->m_MouseStateTracker.leftButton == Tracker::RELEASED);
+			const bool lDown = input->m_MouseState.leftButton;
+
+			float dtFrame = GameTimer::m_Instance->DeltaTime();
+			dtFrame = std::clamp(dtFrame, 0.0f, 0.05f);
+
+			// 클릭 시작: 픽
+			if (mPhysMousePickEnable && lPressed && !uiWantsMouse)
+			{
+				Vec3 ro, rd;
+				if (GetMousePickRay(ro, rd))
+				{
+					RaycastHit hit{};
+					if (mPxWorld->Raycast(ro, rd, mPhysPickMaxDist, hit, 0xFFFFFFFFu, false))
+					{
+						const int idx = FindDropByNativeActor(hit.nativeActor);
+
+						// 드랍 바디가 맞으면 선택 + (옵션) 드래그 시작
+						if (idx >= 0)
+						{
+							mPhysSelDrop = idx;
+
+							if (mPhysMouseDragEnable)
+								BeginMouseDrag(idx, hit);
+						}
+					}
+				}
+			}
+
+			// 드래그 유지
+			if (mPhysDragging && lDown && !uiWantsMouse)
+			{
+				UpdateMouseDrag(dtFrame);
+			}
+
+			// 드래그 종료
+			if (mPhysDragging && lReleased)
+			{
+				EndMouseDrag(dtFrame);
+			}
+		}
+	}
+
+
+
 
 	// =========================================================================
 	// 0.5) Physics step (fixed timestep) + apply moved transforms
@@ -605,6 +673,182 @@ void TutorialApp::NudgeSelectedDrop(const Vec3& delta)
 }
 
 // ============================================================================
+// ------------------------------------------------------------
+// Helpers: quaternion rotate (DirectXMath로 안전하게 처리)
+// ------------------------------------------------------------
+static Vec3 RotateVec(const Quat& q, const Vec3& v)
+{
+	using namespace DirectX;
+	const XMVECTOR vv = XMVectorSet(v.x, v.y, v.z, 0.0f);
+	const XMVECTOR qq = XMVectorSet(q.x, q.y, q.z, q.w);
+	const XMVECTOR r = XMVector3Rotate(vv, qq);
+	return Vec3(XMVectorGetX(r), XMVectorGetY(r), XMVectorGetZ(r));
+}
+
+static Vec3 RotateVecInv(const Quat& q, const Vec3& v)
+{
+	using namespace DirectX;
+	const XMVECTOR vv = XMVectorSet(v.x, v.y, v.z, 0.0f);
+	const XMVECTOR qq = XMQuaternionInverse(XMVectorSet(q.x, q.y, q.z, q.w));
+	const XMVECTOR r = XMVector3Rotate(vv, qq);
+	return Vec3(XMVectorGetX(r), XMVectorGetY(r), XMVectorGetZ(r));
+}
+
+bool TutorialApp::GetMousePickRay(Vec3& outOrigin, Vec3& outDir) const
+{
+	auto* input = InputSystem::Instance;
+	if (!input) return false;
+
+	// 마우스 좌표 (클라이언트 기준이라고 가정: DirectXTK 기본 absolute 모드)
+	const float mx = (float)input->m_MouseState.x;
+	const float my = (float)input->m_MouseState.y;
+
+	// 카메라 View	
+
+	// Projection은 렌더에서 매 프레임 갱신하지만, 픽에도 최신값이 필요하면 여기서 재계산해도 됨.
+	// (여기선 m_Projection 그대로 사용)
+	const DirectX::XMMATRIX V = view;
+	const DirectX::XMMATRIX P = m_Projection;
+	const DirectX::XMMATRIX W = DirectX::XMMatrixIdentity();
+
+	// Unproject: near(0) / far(1)
+	const DirectX::XMVECTOR pNear = DirectX::XMVector3Unproject(
+		DirectX::XMVectorSet(mx, my, 0.0f, 1.0f),
+		0.0f, 0.0f, (float)m_ClientWidth, (float)m_ClientHeight,
+		0.0f, 1.0f, P, V, W);
+
+	const DirectX::XMVECTOR pFar = DirectX::XMVector3Unproject(
+		DirectX::XMVectorSet(mx, my, 1.0f, 1.0f),
+		0.0f, 0.0f, (float)m_ClientWidth, (float)m_ClientHeight,
+		0.0f, 1.0f, P, V, W);
+
+	const Vec3 o(DirectX::XMVectorGetX(pNear), DirectX::XMVectorGetY(pNear), DirectX::XMVectorGetZ(pNear));
+	const Vec3 f(DirectX::XMVectorGetX(pFar), DirectX::XMVectorGetY(pFar), DirectX::XMVectorGetZ(pFar));
+
+	Vec3 d = f - o;
+	if (d.LengthSquared() < 1e-8f) return false;
+	d.Normalize();
+
+	outOrigin = o;
+	outDir = d;
+	return true;
+}
+
+int TutorialApp::FindDropByNativeActor(void* nativeActor) const
+{
+	if (!nativeActor) return -1;
+	for (int i = 0; i < kDropCount; ++i)
+	{
+		if (!mDropBody[i]) continue;
+		if (mDropBody[i]->GetNativeActor() == nativeActor)
+			return i;
+	}
+	return -1;
+}
+
+void TutorialApp::BeginMouseDrag(int idx, const RaycastHit& hit)
+{
+	if (idx < 0 || idx >= kDropCount) return;
+	IRigidBody* b = mDropBody[idx].get();
+	if (!b) return;
+
+	// 선택 UI도 같이 갱신
+	mPhysSelDrop = idx;
+	mPhysTeleportPos = b->GetPosition();
+	mPhysTeleportRotD = Vec3::Zero;
+
+	// 드래그 상태 저장
+	mPhysDragging = true;
+	mPhysDragIdx = idx;
+
+	mPhysDragPrevKinematic = b->IsKinematic();
+	mPhysDragStartRot = b->GetRotation();
+
+	// “카메라를 바라보는 평면” 위에서 끌기 (깊이 유지)
+	mPhysDragPlanePoint = hit.position;
+	mPhysDragPlaneNormal = m_Camera.GetForward(); // normalized 라고 가정
+
+	// 바디 원점 기준, 히트 지점의 로컬 오프셋을 저장해두면
+	// '잡은 점'이 커서에 달라붙는 느낌이 됨(중심만 따라오면 좀 어색함).
+	const Vec3 bodyPos = b->GetPosition();
+	const Vec3 offsetWorld = hit.position - bodyPos;
+	mPhysDragLocalOffset = RotateVecInv(mPhysDragStartRot, offsetWorld);
+
+	// 드래그 방식: "body를 잠깐 kinematic으로 바꾸고 target을 계속 업데이트"
+	if (!mPhysDragPrevKinematic)
+		b->SetKinematic(true);
+
+	// 초기 target 세팅
+	const Vec3 keepGrabPoint = hit.position;
+	const Vec3 offsetBackToWorld = RotateVec(mPhysDragStartRot, mPhysDragLocalOffset);
+	const Vec3 targetPos = keepGrabPoint - offsetBackToWorld;
+
+	b->SetKinematicTarget(targetPos, mPhysDragStartRot);
+
+	mPhysDragPrevTargetPos = targetPos;
+	mPhysDragCurrTargetPos = targetPos;
+}
+
+void TutorialApp::UpdateMouseDrag(float dt)
+{
+	if (!mPhysDragging) return;
+	if (mPhysDragIdx < 0 || mPhysDragIdx >= kDropCount) return;
+
+	IRigidBody* b = mDropBody[mPhysDragIdx].get();
+	if (!b) return;
+
+	Vec3 ro, rd;
+	if (!GetMousePickRay(ro, rd))
+		return;
+
+	// Ray-plane intersection
+	const Vec3 n = mPhysDragPlaneNormal;
+	const float denom = rd.Dot(n);
+	if (fabsf(denom) < 1e-5f)
+		return;
+
+	const float t = (mPhysDragPlanePoint - ro).Dot(n) / denom;
+	const float tt = max(t, 0.0f);
+
+	const Vec3 grabPoint = ro + rd * tt;
+
+	const Vec3 offsetBackToWorld = RotateVec(mPhysDragStartRot, mPhysDragLocalOffset);
+	const Vec3 targetPos = grabPoint - offsetBackToWorld;
+
+	b->SetKinematicTarget(targetPos, mPhysDragStartRot);
+
+	mPhysDragPrevTargetPos = mPhysDragCurrTargetPos;
+	mPhysDragCurrTargetPos = targetPos;
+
+	(void)dt;
+}
+
+void TutorialApp::EndMouseDrag(float dt)
+{
+	if (!mPhysDragging) return;
+
+	IRigidBody* b = (mPhysDragIdx >= 0 && mPhysDragIdx < kDropCount) ? mDropBody[mPhysDragIdx].get() : nullptr;
+
+	if (b)
+	{
+		// 드래그 시작 전에 dynamic이었던 바디는 원상 복구(kinematic -> dynamic)
+		if (!mPhysDragPrevKinematic)
+		{
+			b->SetKinematic(false);
+
+			if (mPhysThrowOnRelease && dt > 1e-6f)
+			{
+				// 놓을 때 손맛: 마지막 target 이동량으로 속도 부여
+				const Vec3 v = (mPhysDragCurrTargetPos - mPhysDragPrevTargetPos) * (1.0f / dt);
+				b->SetLinearVelocity(v);
+				b->WakeUp();
+			}
+		}
+	}
+
+	mPhysDragging = false;
+	mPhysDragIdx = -1;
+}
 
 
 

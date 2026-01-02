@@ -538,6 +538,35 @@ private:
 	std::unique_ptr<IPhysicsActor> mPhysGround;
 	std::unique_ptr<IRigidBody>    mPhysTestBody;
 
+	// === [ADD] Mouse picking / dragging ======================================
+	bool  mPhysMousePickEnable = true;
+	bool  mPhysMouseDragEnable = true;
+	bool  mPhysThrowOnRelease = true;   // 놓을 때 살짝 던지기(속도 부여)
+
+	bool  mPhysDragging = false;
+	int   mPhysDragIdx = -1;
+	bool  mPhysDragPrevKinematic = false;
+
+	Vec3  mPhysDragPlanePoint = Vec3::Zero;   // 드래그 기준 평면 위 점(초기 히트 지점)
+	Vec3  mPhysDragPlaneNormal = Vec3::UnitZ;  // 카메라 forward로 세팅
+	Quat  mPhysDragStartRot = Quat::Identity;
+
+	// 바디 원점 기준 “히트 지점”의 로컬 오프셋(회전 보정해서 같은 점을 잡고 끌기 위함)
+	Vec3  mPhysDragLocalOffset = Vec3::Zero;
+
+	Vec3  mPhysDragPrevTargetPos = Vec3::Zero;
+	Vec3  mPhysDragCurrTargetPos = Vec3::Zero;
+
+	float mPhysPickMaxDist = 50000.0f;
+
+	bool GetMousePickRay(Vec3& outOrigin, Vec3& outDir) const;
+	int  FindDropByNativeActor(void* nativeActor) const;
+
+	void BeginMouseDrag(int idx, const RaycastHit& hit);
+	void UpdateMouseDrag(float dt);
+	void EndMouseDrag(float dt);
+
+
 	// === [ADD] Physics Drop Test =================================================
 	static constexpr int kDropCount = 4;
 
