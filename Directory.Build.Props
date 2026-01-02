@@ -5,7 +5,7 @@
 		<!-- C:\Users\A\Documents\GitHub\vcpkg -->
 		<!-- C:\Users\User\Documents\GitHub\vcpkg -->
 		<VcpkgRoot>C:\Users\A\Documents\GitHub\vcpkg</VcpkgRoot>
-
+		
 		<TripletStatic>x64-windows-static-md</TripletStatic>
 		<TripletDynamic>x64-windows</TripletDynamic>
 	</PropertyGroup>
@@ -35,11 +35,11 @@
 				PhysXFoundation_64.lib;
 				PhysXCommon_64.lib;
 				PhysX_64.lib;
-				PhysXExtensions_static_64.lib;
-				PhysXTask_static_64.lib;
 				PhysXCooking_64.lib;
-				PhysXPvdSDK_64.lib;
-				PhysXCharacterKinematic_64.lib;
+				PhysXExtensions_static_64.lib;
+				PhysXCharacterKinematic_static_64.lib;
+				PhysXPvdSDK_static_64.lib;
+				PhysXTask_static_64.lib;
 
 				directxtk.lib;
 				directxtex.lib;
@@ -76,11 +76,11 @@
 				PhysXFoundation_64.lib;
 				PhysXCommon_64.lib;
 				PhysX_64.lib;
-				PhysXExtensions_static_64.lib;
-				PhysXTask_static_64.lib;
 				PhysXCooking_64.lib;
-				PhysXPvdSDK_64.lib;
-				PhysXCharacterKinematic_64.lib;
+				PhysXExtensions_static_64.lib;
+				PhysXCharacterKinematic_static_64.lib;
+				PhysXPvdSDK_static_64.lib;
+				PhysXTask_static_64.lib;
 
 				directxtk.lib;
 				directxtex.lib;
