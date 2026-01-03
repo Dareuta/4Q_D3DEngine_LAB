@@ -6,8 +6,9 @@
        ========================================================= -->
 	<PropertyGroup>
         <VcpkgRoot Condition="'$(VCPKG_ROOT)' != '' and Exists('$(VCPKG_ROOT)')">$(VCPKG_ROOT)</VcpkgRoot>
-        <VcpkgRoot Condition="'$(VcpkgRoot)' == '' and Exists('C:\Users\User\Documents\GitHub\vcpkg')">C:\Users\User\Documents\GitHub\vcpkg</VcpkgRoot>
         <VcpkgRoot Condition="'$(VcpkgRoot)' == '' and Exists('C:\Users\A\Documents\GitHub\vcpkg')">C:\Users\A\Documents\GitHub\vcpkg</VcpkgRoot>
+        <VcpkgRoot Condition="'$(VcpkgRoot)' == '' and Exists('C:\Users\User\Documents\GitHub\vcpkg')">C:\Users\User\Documents\GitHub\vcpkg</VcpkgRoot>
+		<VcpkgRoot Condition="'$(VcpkgRoot)' == '' and Exists('D:\vcpkg')">D:\vcpkg</VcpkgRoot>
 
 
 		<TripletDynamic>x64-windows</TripletDynamic>
